@@ -1,4 +1,4 @@
-# Current Milestone: 6
+# Current Milestone: 7
 
 ## Completed
 
@@ -8,6 +8,7 @@
 - [x] Milestone 3: RLS Policies + Database Role Setup
 - [x] Milestone 4: Shared Filter System
 - [x] Milestone 5: Dashboard Overview Cards + Tickets Over Time
+- [x] Milestone 6: Team Performance Table
 
 ## Key Decisions (READ BEFORE EVERY MILESTONE)
 
@@ -57,6 +58,10 @@ Examples of good entries:
 - `getUserContext` wrapped in React `cache()` in `src/lib/auth/get-user-context.ts` — deduplicates session lookup within a single server render
 - `DashboardContent` client component at `src/components/dashboard/DashboardContent.tsx` — uses `useFilterState()` + two parallel `useQuery` calls (`staleTime: 30000`); `filters` object in query key drives automatic refetch on filter change
 - `TicketsOverTimeChart` at `src/components/charts/TicketsOverTimeChart.tsx` — Recharts `LineChart`; Created (blue #3b82f6) and Resolved (green #22c55e) lines; grouped by `created_at` month (cohort view)
+
+- `getTeamPerformance()` server action in `src/lib/queries/team.ts` — uses `withRLS()`; single query LEFT JOINing `team_members → tickets → ticket_feedback`; returns all 15 members including those with 0 tickets
+- `TeamPerformanceTable` client component at `src/components/dashboard/TeamPerformanceTable.tsx` — TanStack Table (`@tanstack/react-table`) with client-side sort + filter; custom `numberRangeFilter` FilterFn with `autoRemove` guard (`!Array.isArray(val)` needed — TanStack Table calls `autoRemove` with `undefined` when clearing, causing destructure crash without the guard)
+- Top performer computed client-side: highest resolution rate + rating ≥ average; green row tint + badge
 
 _(append here after each milestone)_
 
