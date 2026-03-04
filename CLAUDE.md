@@ -1,4 +1,4 @@
-# Current Milestone: 7
+# Current Milestone: 8
 
 ## Completed
 
@@ -9,6 +9,7 @@
 - [x] Milestone 4: Shared Filter System
 - [x] Milestone 5: Dashboard Overview Cards + Tickets Over Time
 - [x] Milestone 6: Team Performance Table
+- [x] Milestone 7: Distribution Charts
 
 ## Key Decisions (READ BEFORE EVERY MILESTONE)
 
@@ -62,6 +63,13 @@ Examples of good entries:
 - `getTeamPerformance()` server action in `src/lib/queries/team.ts` — uses `withRLS()`; single query LEFT JOINing `team_members → tickets → ticket_feedback`; returns all 15 members including those with 0 tickets
 - `TeamPerformanceTable` client component at `src/components/dashboard/TeamPerformanceTable.tsx` — TanStack Table (`@tanstack/react-table`) with client-side sort + filter; custom `numberRangeFilter` FilterFn with `autoRemove` guard (`!Array.isArray(val)` needed — TanStack Table calls `autoRemove` with `undefined` when clearing, causing destructure crash without the guard)
 - Top performer computed client-side: highest resolution rate + rating ≥ average; green row tint + badge
+
+- `getTicketsByType` and `getTicketsByPriority` server actions in `src/lib/queries/dashboard.ts` — use `withRLS()` + Drizzle ORM queries (not stored functions); strip `ticketType` and `priority` from FilterState before applying so charts always show full distribution scoped only by date + team member
+- `FilterBar` accepts an optional `allowedFilters?: FilterKey[]` prop — pass `['date', 'teamMember']` on distribution page to restrict available filters in the UI
+- Recharts tooltip `contentStyle.background` must use a literal hex (`#ffffff`) not a CSS variable — CSS variables don't resolve inside Recharts' tooltip DOM (rendered outside component tree)
+- `TicketsByTypeChart` at `src/components/charts/TicketsByTypeChart.tsx` — Recharts PieChart donut; 14-color palette; percentage labels rendered via `any`-typed custom label function (Recharts `PieLabelRenderProps` doesn't include `percentage` in its type despite passing it at runtime)
+- `TicketsByPriorityChart` at `src/components/charts/TicketsByPriorityChart.tsx` — stacked BarChart; priority order enforced via `CASE` in SQL ORDER BY; open=red/in_progress=yellow/resolved=green
+- Distribution page at `src/app/dashboard/distribution/page.tsx` — client component following same `Inner` + outer `<Suspense>` pattern as DashboardContent
 
 _(append here after each milestone)_
 

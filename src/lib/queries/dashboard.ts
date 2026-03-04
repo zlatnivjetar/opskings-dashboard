@@ -1,7 +1,10 @@
 'use server';
 
-import { sql } from 'drizzle-orm';
+import { sql, eq, desc } from 'drizzle-orm';
 import { adminDb } from '@/lib/db';
+import { tickets, ticketTypes } from '@/lib/db/schema';
+import { withRLS } from '@/lib/db/rls-client';
+import { applyTicketFilters } from '@/lib/queries/filters';
 import { getUserContext } from '@/lib/auth/get-user-context';
 import type { FilterState, MultiFilter } from '@/types/filters';
 
@@ -132,6 +135,77 @@ export async function getDashboardSummary(filters: FilterState): Promise<Dashboa
       row.avg_resolution_hours != null ? Number(row.avg_resolution_hours) : null,
     avgRating: row.avg_rating != null ? Number(row.avg_rating) : null,
   };
+}
+
+export type TicketsByTypeRow = {
+  ticketTypeId: number;
+  typeName: string;
+  count: number;
+  percentage: number;
+};
+
+export type TicketsByPriorityRow = {
+  priority: string;
+  open: number;
+  in_progress: number;
+  resolved: number;
+};
+
+export async function getTicketsByType(filters: FilterState): Promise<TicketsByTypeRow[]> {
+  const ctx = await getUserContext();
+  const distFilters: FilterState = { date: filters.date, teamMember: filters.teamMember };
+  const whereClause = applyTicketFilters([], distFilters);
+
+  return withRLS(ctx, async (tx) => {
+    const rows = await tx
+      .select({
+        ticketTypeId: ticketTypes.id,
+        typeName: ticketTypes.typeName,
+        count: sql<number>`COUNT(*)::int`,
+      })
+      .from(tickets)
+      .innerJoin(ticketTypes, eq(tickets.ticketTypeId, ticketTypes.id))
+      .where(whereClause)
+      .groupBy(ticketTypes.id, ticketTypes.typeName)
+      .orderBy(desc(sql`COUNT(*)`));
+
+    const total = rows.reduce((s, r) => s + r.count, 0);
+    return rows.map((r) => ({
+      ticketTypeId: r.ticketTypeId,
+      typeName: r.typeName,
+      count: r.count,
+      percentage: total > 0 ? Math.round((r.count / total) * 1000) / 10 : 0,
+    }));
+  });
+}
+
+export async function getTicketsByPriority(filters: FilterState): Promise<TicketsByPriorityRow[]> {
+  const ctx = await getUserContext();
+  const distFilters: FilterState = { date: filters.date, teamMember: filters.teamMember };
+  const whereClause = applyTicketFilters([], distFilters);
+
+  return withRLS(ctx, async (tx) => {
+    const rows = await tx
+      .select({
+        priority: tickets.priority,
+        open: sql<number>`SUM(CASE WHEN status = 'open' THEN 1 ELSE 0 END)::int`,
+        in_progress: sql<number>`SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END)::int`,
+        resolved: sql<number>`SUM(CASE WHEN status = 'resolved' THEN 1 ELSE 0 END)::int`,
+      })
+      .from(tickets)
+      .where(whereClause)
+      .groupBy(tickets.priority)
+      .orderBy(
+        sql`CASE priority WHEN 'low' THEN 1 WHEN 'medium' THEN 2 WHEN 'high' THEN 3 WHEN 'critical' THEN 4 ELSE 5 END`,
+      );
+
+    return rows.map((r) => ({
+      priority: r.priority ?? 'unknown',
+      open: r.open ?? 0,
+      in_progress: r.in_progress ?? 0,
+      resolved: r.resolved ?? 0,
+    }));
+  });
 }
 
 export async function getTicketsOverTime(filters: FilterState): Promise<TicketsOverTimeRow[]> {

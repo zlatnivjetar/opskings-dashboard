@@ -31,8 +31,9 @@ function todayStr(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-export function FilterBar() {
+export function FilterBar({ allowedFilters }: { allowedFilters?: FilterKey[] }) {
   const { filters, setFilter, removeFilter, clearFilters } = useFilterState();
+  const allowedKeys = allowedFilters ?? ALL_FILTER_KEYS;
 
   const { data: teamMemberOptions = [] } = useQuery({
     queryKey: ['reference', 'teamMembers'],
@@ -61,8 +62,8 @@ export function FilterBar() {
     label: p.charAt(0).toUpperCase() + p.slice(1),
   }));
 
-  const activeKeys = ALL_FILTER_KEYS.filter((k) => filters[k] !== undefined);
-  const inactiveKeys = ALL_FILTER_KEYS.filter((k) => filters[k] === undefined);
+  const activeKeys = allowedKeys.filter((k) => filters[k] !== undefined);
+  const inactiveKeys = allowedKeys.filter((k) => filters[k] === undefined);
 
   function addFilter(key: FilterKey) {
     switch (key) {
