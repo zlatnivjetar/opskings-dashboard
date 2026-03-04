@@ -1,4 +1,4 @@
-# Current Milestone: 4
+# Current Milestone: 5
 
 ## Completed
 
@@ -6,6 +6,7 @@
 - [x] Milestone 1: Drizzle Schema + Database Indexes
 - [x] Milestone 2: BetterAuth Setup + User Schema
 - [x] Milestone 3: RLS Policies + Database Role Setup
+- [x] Milestone 4: Shared Filter System
 
 ## Key Decisions (READ BEFORE EVERY MILESTONE)
 
@@ -41,6 +42,12 @@ Examples of good entries:
 - `ctx` passed to `withRLS` is the full object from `getUserContext()`: `{ userId, role, clientId, teamMemberId }`
 - RLS helper functions in Postgres: `get_app_user_role()`, `get_app_client_id()`, `get_app_user_id()`, `get_app_team_member_id()` — used inside policy USING/WITH CHECK expressions
 - `messages_insert` policy enforces attribution: team member inserts require `from_team_member_id = get_app_team_member_id()`; client inserts require `from_team_member_id IS NULL`
+
+- Filter types + `PRIORITY_OPTIONS` constant live in `src/types/filters.ts` — do NOT put plain constants in `'use server'` files (they get proxied and lose their prototype)
+- `applyTicketFilters(baseConditions, filters)` in `src/lib/queries/filters.ts` — accepts a `(SQL | undefined)[]` base array and returns `and(...all)` for use directly in Drizzle `.where()`
+- `useFilterState()` in `src/hooks/use-filter-state.ts` — syncs `FilterState` to URL params; multi-filter operator key is always written even with empty values so the filter badge stays visible while selecting; use `filters` in TanStack Query keys for automatic refetch
+- `FilterBar` in `src/components/filters/FilterBar.tsx` is self-contained (calls `useFilterState` + fetches reference data internally) — wrap in `<Suspense>` in any page that uses it (requires `useSearchParams`)
+- Reference data server actions (`getTeamMembers`, `getTicketTypes`) in `src/lib/actions/reference.ts` use `adminDb` directly — these are lookup tables, not user data
 
 _(append here after each milestone)_
 
