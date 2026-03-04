@@ -1,7 +1,8 @@
+import { cache } from 'react';
 import { auth } from './index';
 import { headers } from 'next/headers';
 
-export async function getUserContext() {
+export const getUserContext = cache(async function getUserContext() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) throw new Error('Not authenticated');
   return {
@@ -10,4 +11,4 @@ export async function getUserContext() {
     clientId: session.user.clientId as number | null,
     teamMemberId: session.user.teamMemberId as number | null,
   };
-}
+});

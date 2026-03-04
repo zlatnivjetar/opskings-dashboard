@@ -1,4 +1,4 @@
-# Current Milestone: 5
+# Current Milestone: 6
 
 ## Completed
 
@@ -7,6 +7,7 @@
 - [x] Milestone 2: BetterAuth Setup + User Schema
 - [x] Milestone 3: RLS Policies + Database Role Setup
 - [x] Milestone 4: Shared Filter System
+- [x] Milestone 5: Dashboard Overview Cards + Tickets Over Time
 
 ## Key Decisions (READ BEFORE EVERY MILESTONE)
 
@@ -48,6 +49,14 @@ Examples of good entries:
 - `useFilterState()` in `src/hooks/use-filter-state.ts` — syncs `FilterState` to URL params; multi-filter operator key is always written even with empty values so the filter badge stays visible while selecting; use `filters` in TanStack Query keys for automatic refetch
 - `FilterBar` in `src/components/filters/FilterBar.tsx` is self-contained (calls `useFilterState` + fetches reference data internally) — wrap in `<Suspense>` in any page that uses it (requires `useSearchParams`)
 - Reference data server actions (`getTeamMembers`, `getTicketTypes`) in `src/lib/actions/reference.ts` use `adminDb` directly — these are lookup tables, not user data
+
+- Dashboard aggregate queries use Postgres stored functions (`get_dashboard_summary_rls`, `get_tickets_over_time_rls`) in `database/rls-functions.sql` — called via `adminDb.execute(sql`SELECT * FROM fn(...)`)` in autocommit (no transaction wrapper); each function internally does `SET LOCAL ROLE rls_user` + `set_config` + query in one DB round-trip
+- All non-string parameters passed to these functions must be serialised before the `sql` template: dates → `.toISOString()`, int arrays → `'{1,2}'` (Postgres array literal), text arrays → `'{low,high}'`; explicit `::timestamptz` / `::int[]` / `::text[]` casts added in the SQL call
+- Exception to the withRLS rule: these two dashboard server actions call `adminDb.execute()` directly because the RLS enforcement is encapsulated inside the DB functions themselves — `withRLS` is still required for all other user-data queries
+- BetterAuth `cookieCache` enabled in `src/lib/auth/index.ts` (`maxAge: 300`) — session data stored in a signed cookie, eliminating the DB round-trip on repeated `getSession` calls; users must sign out and back in once after this change is deployed
+- `getUserContext` wrapped in React `cache()` in `src/lib/auth/get-user-context.ts` — deduplicates session lookup within a single server render
+- `DashboardContent` client component at `src/components/dashboard/DashboardContent.tsx` — uses `useFilterState()` + two parallel `useQuery` calls (`staleTime: 30000`); `filters` object in query key drives automatic refetch on filter change
+- `TicketsOverTimeChart` at `src/components/charts/TicketsOverTimeChart.tsx` — Recharts `LineChart`; Created (blue #3b82f6) and Resolved (green #22c55e) lines; grouped by `created_at` month (cohort view)
 
 _(append here after each milestone)_
 
