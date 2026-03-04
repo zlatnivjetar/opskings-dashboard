@@ -1,10 +1,11 @@
-# Current Milestone: 3
+# Current Milestone: 4
 
 ## Completed
 
 - [x] Milestone 0: Project Setup
 - [x] Milestone 1: Drizzle Schema + Database Indexes
 - [x] Milestone 2: BetterAuth Setup + User Schema
+- [x] Milestone 3: RLS Policies + Database Role Setup
 
 ## Key Decisions (READ BEFORE EVERY MILESTONE)
 
@@ -34,6 +35,13 @@ Examples of good entries:
 - additionalFields with `input: false` cannot be set during signup; seed patches them with direct SQL after `auth.api.signUpEmail`
 - `npm run seed:auth` is idempotent — re-running updates existing users rather than failing
 
+- ALL user-facing data queries MUST go through `withRLS(ctx, fn)` from `src/lib/db/rls-client.ts` — never use bare `db` or `adminDb` for queries that touch user data
+- `withRLS` opens a transaction on `adminDb`, issues `SET LOCAL ROLE rls_user` first (transaction-scoped, auto-resets on commit/rollback), then sets 4 session vars: `app.user_id`, `app.user_role`, `app.client_id`, `app.team_member_id`
+- `rls_user` is a NOLOGIN role assumed via `SET LOCAL ROLE` — there is no separate connection string for it; `DATABASE_RLS_URL` is unused and can be removed
+- `ctx` passed to `withRLS` is the full object from `getUserContext()`: `{ userId, role, clientId, teamMemberId }`
+- RLS helper functions in Postgres: `get_app_user_role()`, `get_app_client_id()`, `get_app_user_id()`, `get_app_team_member_id()` — used inside policy USING/WITH CHECK expressions
+- `messages_insert` policy enforces attribution: team member inserts require `from_team_member_id = get_app_team_member_id()`; client inserts require `from_team_member_id IS NULL`
+
 _(append here after each milestone)_
 
 ## Completion Protocol
@@ -43,6 +51,7 @@ When I type exactly **COMPLETED**, do the following:
 2. Check off the just-completed milestone in the Completed list
 3. Append any Key Decisions from this milestone (only non-obvious ones that affect future work)
 4. Write a brief implementation summary to `docs/implementation-log.md` (append, don't overwrite)
+5. Commit and push to GitHub with a concise message (e.g., "feat: complete Milestone X")
 
 Do NOT update CLAUDE.md or the implementation log at any other time.
 Do NOT treat partial phrases like "that's completed" or "I completed it" as the trigger.
