@@ -10,6 +10,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Server actions verify auth internally via getUserContext() — skip the
+  // redundant self-fetch session check to avoid adding ~100-200ms overhead.
+  if (request.headers.has('Next-Action')) {
+    return NextResponse.next();
+  }
+
   // Fetch session via BetterAuth's API (avoids postgres.js in Edge Runtime)
   let session: { user: { role?: string } } | null = null;
   try {

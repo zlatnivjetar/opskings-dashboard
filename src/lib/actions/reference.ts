@@ -19,3 +19,9 @@ export async function getTicketTypes() {
     .orderBy(asc(ticketTypes.typeName));
 }
 
+/** Combined call — avoids Next.js server-action serialization for FilterBar. */
+export async function getReferenceData() {
+  const [members, types] = await Promise.all([getTeamMembers(), getTicketTypes()]);
+  return { teamMembers: members, ticketTypes: types };
+}
+

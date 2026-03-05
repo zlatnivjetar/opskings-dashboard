@@ -12,7 +12,7 @@ import {
 import { useFilterState } from '@/hooks/use-filter-state';
 import { DateFilter } from './DateFilter';
 import { MultiSelectFilter, type SelectOption } from './MultiSelectFilter';
-import { getTeamMembers, getTicketTypes } from '@/lib/actions/reference';
+import { getReferenceData } from '@/lib/actions/reference';
 import { PRIORITY_OPTIONS } from '@/types/filters';
 import type { FilterState } from '@/types/filters';
 
@@ -35,17 +35,14 @@ export function FilterBar({ allowedFilters }: { allowedFilters?: FilterKey[] }) 
   const { filters, setFilter, removeFilter, clearFilters } = useFilterState();
   const allowedKeys = allowedFilters ?? ALL_FILTER_KEYS;
 
-  const { data: teamMemberOptions = [] } = useQuery({
-    queryKey: ['reference', 'teamMembers'],
-    queryFn: () => getTeamMembers(),
+  const { data: refData } = useQuery({
+    queryKey: ['reference', 'all'],
+    queryFn: () => getReferenceData(),
     staleTime: 300_000,
   });
 
-  const { data: ticketTypeOptions = [] } = useQuery({
-    queryKey: ['reference', 'ticketTypes'],
-    queryFn: () => getTicketTypes(),
-    staleTime: 300_000,
-  });
+  const teamMemberOptions = refData?.teamMembers ?? [];
+  const ticketTypeOptions = refData?.ticketTypes ?? [];
 
   const tmOptions: SelectOption[] = teamMemberOptions.map((m) => ({
     value: m.id,
