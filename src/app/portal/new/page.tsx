@@ -1,3 +1,13 @@
-export default function NewTicketPage() {
-  return <h1>New Ticket</h1>;
+import { getTicketTypes } from '@/lib/actions/reference';
+import { NewTicketForm } from '@/components/portal/NewTicketForm';
+
+export default async function NewTicketPage() {
+  const ticketTypes = await getTicketTypes();
+
+  return (
+    <div className="max-w-lg">
+      <h1 className="text-2xl font-bold mb-6">New Ticket</h1>
+      <NewTicketForm ticketTypes={ticketTypes} />
+    </div>
+  );
 }

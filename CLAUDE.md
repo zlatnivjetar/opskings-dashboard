@@ -1,4 +1,4 @@
-# Current Milestone: 10
+# Current Milestone: 11
 
 ## Completed
 
@@ -12,6 +12,7 @@
 - [x] Milestone 7: Distribution Charts
 - [x] Milestone 8: Client Analysis View
 - [x] Milestone 9: Response Time Analysis
+- [x] Milestone 10: Client Portal
 
 ## Key Decisions (READ BEFORE EVERY MILESTONE)
 
@@ -83,6 +84,13 @@ Examples of good entries:
 - `get_overdue_tickets_rls` uses `COUNT(*) OVER()` window function for `full_count` — pagination + total in one query, same pattern as `get_client_analysis_rls`
 - `ResponseTimeContent` client component at `src/components/dashboard/ResponseTimeContent.tsx` — contains all 'use client' logic; page.tsx is a server component that role-guards then renders it (same split as clients page)
 - `OverdueTicketsTable` receives `filters` as a prop and resets `page` state to 1 via `useEffect` when filters change
+
+- Portal server actions in `src/lib/queries/portal.ts` — all 4 actions (`getMyTickets`, `getTicketDetail`, `createTicket`, `submitFeedback`) use `withRLS()`; `createTicket` inserts ticket + first message in the same transaction; `clientId` is always taken from session context, never user input
+- `getTicketDetail` fetches ticket, messages (with team member names), and feedback in 3 sequential queries inside a single `withRLS` transaction — RLS on tickets table enforces client can only see their own ticket
+- Portal layout (`src/app/portal/layout.tsx`) is a server component — checks role, redirects `team_member` to `/dashboard`, fetches email for header display; middleware also enforces this at the Edge
+- Client components in `src/components/portal/`: `SignOutButton` (authClient.signOut + router.push), `NewTicketForm` (calls createTicket, router.push on success), `FeedbackForm` (calls submitFeedback, router.refresh on success)
+- `src/components/ui/textarea.tsx` added (was missing from original shadcn install)
+- Ticket detail page uses `router.refresh()` after feedback submission so the server component re-fetches and hides the form without a full navigation
 
 _(append here after each milestone)_
 
