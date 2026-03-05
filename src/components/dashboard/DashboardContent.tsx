@@ -7,8 +7,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { FilterBar } from '@/components/filters/FilterBar';
 import { TicketsOverTimeChart } from '@/components/charts/TicketsOverTimeChart';
 import { useFilterState } from '@/hooks/use-filter-state';
-import { getDashboardSummary, getTicketsOverTime } from '@/lib/queries/dashboard';
-import type { FilterState } from '@/types/filters';
+import { getDashboardAll } from '@/lib/queries/dashboard';
+import type { DashboardSummary, TicketsOverTimeRow } from '@/lib/queries/dashboard';
 
 function SummaryCardsSkeleton() {
   return (
@@ -28,14 +28,8 @@ function SummaryCardsSkeleton() {
   );
 }
 
-function SummaryCards({ filters }: { filters: FilterState }) {
-  const { data, isLoading } = useQuery({
-    queryKey: ['dashboard', 'summary', filters],
-    queryFn: () => getDashboardSummary(filters),
-    staleTime: 30_000,
-  });
-
-  if (isLoading || !data) return <SummaryCardsSkeleton />;
+function SummaryCards({ data }: { data: DashboardSummary | undefined }) {
+  if (!data) return <SummaryCardsSkeleton />;
 
   const openPct =
     data.totalTickets > 0
@@ -108,20 +102,20 @@ function SummaryCards({ filters }: { filters: FilterState }) {
   );
 }
 
-function TicketsChart({ filters }: { filters: FilterState }) {
-  const { data = [], isLoading } = useQuery({
-    queryKey: ['dashboard', 'ticketsOverTime', filters],
-    queryFn: () => getTicketsOverTime(filters),
-    staleTime: 30_000,
-  });
-
+function TicketsChart({ data, isLoading }: { data: TicketsOverTimeRow[] | undefined; isLoading: boolean }) {
   if (isLoading) return <Skeleton className="h-[300px] w-full" />;
-
-  return <TicketsOverTimeChart data={data} />;
+  return <TicketsOverTimeChart data={data ?? []} />;
 }
 
 function Inner() {
   const { filters } = useFilterState();
+
+  // Single request — both queries run in parallel on the server via Promise.all.
+  const { data, isLoading } = useQuery({
+    queryKey: ['dashboard', 'all', filters],
+    queryFn: () => getDashboardAll(filters),
+    staleTime: 30_000,
+  });
 
   return (
     <div className="p-6 space-y-6">
@@ -132,14 +126,14 @@ function Inner() {
         </Suspense>
       </div>
 
-      <SummaryCards filters={filters} />
+      <SummaryCards data={data?.summary} />
 
       <Card>
         <CardHeader>
           <CardTitle>Tickets Over Time</CardTitle>
         </CardHeader>
         <CardContent>
-          <TicketsChart filters={filters} />
+          <TicketsChart data={data?.ticketsOverTime} isLoading={isLoading} />
         </CardContent>
       </Card>
     </div>

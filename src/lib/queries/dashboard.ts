@@ -208,6 +208,57 @@ export async function getTicketsByPriority(filters: FilterState): Promise<Ticket
   });
 }
 
+// Combined action — one HTTP round-trip, both queries run in parallel via Promise.all.
+// Replaces the two-separate-useQuery pattern that Next.js serialises.
+export async function getDashboardAll(
+  filters: FilterState,
+): Promise<{ summary: DashboardSummary; ticketsOverTime: TicketsOverTimeRow[] }> {
+  const ctx = await getUserContext();
+  const p = toRLSParams(filters);
+
+  const [summaryRows, timeRows] = await Promise.all([
+    adminDb.execute<{
+      total_tickets: number;
+      open_tickets: number;
+      avg_resolution_hours: string | null;
+      avg_rating: string | null;
+    }>(sql`
+      SELECT * FROM get_dashboard_summary_rls(
+        ${ctx.userId}, ${ctx.role},
+        ${ctx.clientId ? String(ctx.clientId) : ''},
+        ${ctx.teamMemberId ? String(ctx.teamMemberId) : ''},
+        ${p.dateFrom}::timestamptz, ${p.dateTo}::timestamptz,
+        ${p.assignedInclude}::int[], ${p.assignedExclude}::int[],
+        ${p.typeInclude}::int[],    ${p.typeExclude}::int[],
+        ${p.priorityInclude}::text[], ${p.priorityExclude}::text[]
+      )
+    `),
+    adminDb.execute<{ month: string; created: number; resolved: number }>(sql`
+      SELECT * FROM get_tickets_over_time_rls(
+        ${ctx.userId}, ${ctx.role},
+        ${ctx.clientId ? String(ctx.clientId) : ''},
+        ${ctx.teamMemberId ? String(ctx.teamMemberId) : ''},
+        ${p.dateFrom}::timestamptz, ${p.dateTo}::timestamptz,
+        ${p.assignedInclude}::int[], ${p.assignedExclude}::int[],
+        ${p.typeInclude}::int[],    ${p.typeExclude}::int[],
+        ${p.priorityInclude}::text[], ${p.priorityExclude}::text[]
+      )
+    `),
+  ]);
+
+  const sr = summaryRows[0];
+  return {
+    summary: {
+      totalTickets: sr.total_tickets ?? 0,
+      openTickets: sr.open_tickets ?? 0,
+      avgResolutionHours:
+        sr.avg_resolution_hours != null ? Number(sr.avg_resolution_hours) : null,
+      avgRating: sr.avg_rating != null ? Number(sr.avg_rating) : null,
+    },
+    ticketsOverTime: timeRows.map((r) => ({ month: r.month, created: r.created, resolved: r.resolved })),
+  };
+}
+
 export async function getTicketsOverTime(filters: FilterState): Promise<TicketsOverTimeRow[]> {
   const ctx = await getUserContext();
   const p = toRLSParams(filters);
@@ -234,4 +285,60 @@ export async function getTicketsOverTime(filters: FilterState): Promise<TicketsO
   `);
 
   return rows.map((r) => ({ month: r.month, created: r.created, resolved: r.resolved }));
+}
+
+// Combined distribution action — replaces two sequential useQuery calls.
+export async function getDistributionAll(
+  filters: FilterState,
+): Promise<{ byType: TicketsByTypeRow[]; byPriority: TicketsByPriorityRow[] }> {
+  const ctx = await getUserContext();
+  const distFilters: FilterState = { date: filters.date, teamMember: filters.teamMember };
+  const whereClause = applyTicketFilters([], distFilters);
+
+  const [byType, byPriority] = await Promise.all([
+    withRLS(ctx, (tx) =>
+      tx
+        .select({
+          ticketTypeId: ticketTypes.id,
+          typeName: ticketTypes.typeName,
+          count: sql<number>`COUNT(*)::int`,
+        })
+        .from(tickets)
+        .innerJoin(ticketTypes, eq(tickets.ticketTypeId, ticketTypes.id))
+        .where(whereClause)
+        .groupBy(ticketTypes.id, ticketTypes.typeName)
+        .orderBy(desc(sql`COUNT(*)`)),
+    ),
+    withRLS(ctx, (tx) =>
+      tx
+        .select({
+          priority: tickets.priority,
+          open: sql<number>`SUM(CASE WHEN status = 'open' THEN 1 ELSE 0 END)::int`,
+          in_progress: sql<number>`SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END)::int`,
+          resolved: sql<number>`SUM(CASE WHEN status = 'resolved' THEN 1 ELSE 0 END)::int`,
+        })
+        .from(tickets)
+        .where(whereClause)
+        .groupBy(tickets.priority)
+        .orderBy(
+          sql`CASE priority WHEN 'low' THEN 1 WHEN 'medium' THEN 2 WHEN 'high' THEN 3 WHEN 'critical' THEN 4 ELSE 5 END`,
+        ),
+    ),
+  ]);
+
+  const total = byType.reduce((s, r) => s + r.count, 0);
+  return {
+    byType: byType.map((r) => ({
+      ticketTypeId: r.ticketTypeId,
+      typeName: r.typeName,
+      count: r.count,
+      percentage: total > 0 ? Math.round((r.count / total) * 1000) / 10 : 0,
+    })),
+    byPriority: byPriority.map((r) => ({
+      priority: r.priority ?? 'unknown',
+      open: r.open ?? 0,
+      in_progress: r.in_progress ?? 0,
+      resolved: r.resolved ?? 0,
+    })),
+  };
 }

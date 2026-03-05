@@ -1,7 +1,5 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import {
   Table,
   TableBody,
@@ -13,8 +11,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getOverdueTickets } from '@/lib/queries/response-time';
-import type { FilterState } from '@/types/filters';
+import type { OverdueTicketRow } from '@/lib/queries/response-time';
 
 const PRIORITY_STYLES: Record<string, string> = {
   low:      'bg-slate-100 text-slate-700',
@@ -27,25 +24,25 @@ function fmt(hours: number): string {
   return hours >= 1 ? `${hours.toFixed(1)}h` : `${Math.round(hours * 60)}m`;
 }
 
-export function OverdueTicketsTable({ filters }: { filters: FilterState }) {
-  const [page, setPage] = useState(1);
+interface OverdueTicketsTableProps {
+  rows: OverdueTicketRow[];
+  totalCount: number;
+  totalPages: number;
+  page: number;
+  onPageChange: (page: number) => void;
+  isLoading: boolean;
+  isFetching: boolean;
+}
 
-  // Reset to page 1 whenever filters change
-  useEffect(() => {
-    setPage(1);
-  }, [filters]);
-
-  const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['response-time', 'overdue', filters, page],
-    queryFn: () => getOverdueTickets(filters, { page, pageSize: 20 }),
-    staleTime: 30_000,
-    placeholderData: keepPreviousData,
-  });
-
-  const rows = data?.rows ?? [];
-  const totalCount = data?.totalCount ?? 0;
-  const totalPages = data?.totalPages ?? 1;
-
+export function OverdueTicketsTable({
+  rows,
+  totalCount,
+  totalPages,
+  page,
+  onPageChange,
+  isLoading,
+  isFetching,
+}: OverdueTicketsTableProps) {
   const COLS = 8;
 
   return (
@@ -126,7 +123,7 @@ export function OverdueTicketsTable({ filters }: { filters: FilterState }) {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setPage((p) => p - 1)}
+            onClick={() => onPageChange(page - 1)}
             disabled={page <= 1 || isLoading}
           >
             Previous
@@ -137,7 +134,7 @@ export function OverdueTicketsTable({ filters }: { filters: FilterState }) {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setPage((p) => p + 1)}
+            onClick={() => onPageChange(page + 1)}
             disabled={page >= totalPages || isLoading}
           >
             Next

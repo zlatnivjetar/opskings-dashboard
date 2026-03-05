@@ -86,6 +86,11 @@ export type OverdueTicketsResult = {
   totalPages: number;
 };
 
+export type ResponseTimeAll = {
+  stats: ResolutionStatRow[];
+  overdue: OverdueTicketsResult;
+};
+
 // ─── Server Actions ───────────────────────────────────────────────────────────
 
 export async function getResolutionTimeStats(
@@ -173,5 +178,81 @@ export async function getOverdueTickets(
     })),
     totalCount,
     totalPages,
+  };
+}
+
+// Combined action — fires stats + overdue in parallel, one HTTP round-trip.
+export async function getResponseTimeAll(
+  filters: FilterState,
+  page: number = 1,
+  pageSize: number = 20,
+): Promise<ResponseTimeAll> {
+  const ctx = await getUserContext();
+  const p = toRTParams(filters);
+
+  const [statsRows, overdueRows] = await Promise.all([
+    adminDb.execute<{
+      priority: string;
+      min_hours: string;
+      max_hours: string;
+      avg_hours: string;
+      median_hours: string;
+      expected_hours: string | null;
+    }>(sql`
+      SELECT * FROM get_resolution_time_stats_rls(
+        ${ctx.userId}, ${ctx.role},
+        ${ctx.clientId ? String(ctx.clientId) : ''},
+        ${ctx.teamMemberId ? String(ctx.teamMemberId) : ''},
+        ${p.dateFrom}::timestamptz, ${p.dateTo}::timestamptz,
+        ${p.assignedInclude}::int[], ${p.assignedExclude}::int[]
+      )
+    `),
+    adminDb.execute<{
+      ticket_id: number;
+      title: string;
+      client_name: string;
+      type_name: string;
+      priority: string;
+      actual_hours: string;
+      expected_hours: string;
+      excess_hours: string;
+      full_count: string;
+    }>(sql`
+      SELECT * FROM get_overdue_tickets_rls(
+        ${ctx.userId}, ${ctx.role},
+        ${ctx.clientId ? String(ctx.clientId) : ''},
+        ${ctx.teamMemberId ? String(ctx.teamMemberId) : ''},
+        ${p.dateFrom}::timestamptz, ${p.dateTo}::timestamptz,
+        ${p.assignedInclude}::int[], ${p.assignedExclude}::int[],
+        ${page}, ${pageSize}
+      )
+    `),
+  ]);
+
+  const totalCount = overdueRows.length > 0 ? Number(overdueRows[0].full_count) : 0;
+
+  return {
+    stats: statsRows.map((r) => ({
+      priority: r.priority,
+      minHours: Number(r.min_hours),
+      maxHours: Number(r.max_hours),
+      avgHours: Number(r.avg_hours),
+      medianHours: Number(r.median_hours),
+      expectedHours: r.expected_hours != null ? Number(r.expected_hours) : 0,
+    })),
+    overdue: {
+      rows: overdueRows.map((r) => ({
+        ticketId: Number(r.ticket_id),
+        title: r.title,
+        clientName: r.client_name,
+        typeName: r.type_name,
+        priority: r.priority,
+        actualHours: Number(r.actual_hours),
+        expectedHours: Number(r.expected_hours),
+        excessHours: Number(r.excess_hours),
+      })),
+      totalCount,
+      totalPages: Math.max(1, Math.ceil(totalCount / pageSize)),
+    },
   };
 }

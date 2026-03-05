@@ -8,22 +8,17 @@ import { FilterBar } from '@/components/filters/FilterBar';
 import { TicketsByTypeChart } from '@/components/charts/TicketsByTypeChart';
 import { TicketsByPriorityChart } from '@/components/charts/TicketsByPriorityChart';
 import { useFilterState } from '@/hooks/use-filter-state';
-import { getTicketsByType, getTicketsByPriority } from '@/lib/queries/dashboard';
+import { getDistributionAll } from '@/lib/queries/dashboard';
 
 const DIST_FILTERS = ['date', 'teamMember'] as const;
 
 function Inner() {
   const { filters } = useFilterState();
 
-  const { data: typeData = [], isLoading: typeLoading } = useQuery({
-    queryKey: ['dashboard', 'ticketsByType', filters],
-    queryFn: () => getTicketsByType(filters),
-    staleTime: 30_000,
-  });
-
-  const { data: priorityData = [], isLoading: priorityLoading } = useQuery({
-    queryKey: ['dashboard', 'ticketsByPriority', filters],
-    queryFn: () => getTicketsByPriority(filters),
+  // Single request — both queries run in parallel on the server via Promise.all.
+  const { data, isLoading } = useQuery({
+    queryKey: ['dashboard', 'distribution', filters],
+    queryFn: () => getDistributionAll(filters),
     staleTime: 30_000,
   });
 
@@ -42,10 +37,10 @@ function Inner() {
             <CardTitle>Tickets by Type</CardTitle>
           </CardHeader>
           <CardContent>
-            {typeLoading ? (
+            {isLoading ? (
               <Skeleton className="h-[340px] w-full" />
             ) : (
-              <TicketsByTypeChart data={typeData} />
+              <TicketsByTypeChart data={data?.byType ?? []} />
             )}
           </CardContent>
         </Card>
@@ -55,10 +50,10 @@ function Inner() {
             <CardTitle>Tickets by Priority</CardTitle>
           </CardHeader>
           <CardContent>
-            {priorityLoading ? (
+            {isLoading ? (
               <Skeleton className="h-[340px] w-full" />
             ) : (
-              <TicketsByPriorityChart data={priorityData} />
+              <TicketsByPriorityChart data={data?.byPriority ?? []} />
             )}
           </CardContent>
         </Card>

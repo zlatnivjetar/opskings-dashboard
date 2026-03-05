@@ -1,7 +1,7 @@
 'use client';
 
-import { Suspense } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { Suspense, useState, useEffect } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -16,7 +16,7 @@ import { FilterBar } from '@/components/filters/FilterBar';
 import { ResolutionComparisonChart } from '@/components/charts/ResolutionComparisonChart';
 import { OverdueTicketsTable } from '@/components/dashboard/OverdueTicketsTable';
 import { useFilterState } from '@/hooks/use-filter-state';
-import { getResolutionTimeStats } from '@/lib/queries/response-time';
+import { getResponseTimeAll } from '@/lib/queries/response-time';
 
 const RT_FILTERS = ['date', 'teamMember'] as const;
 
@@ -44,17 +44,26 @@ function VarianceBadge({ actual, expected }: { actual: number; expected: number 
   );
 }
 
+const PRIORITY_ORDER = ['low', 'medium', 'high', 'critical'];
+
 function Inner() {
   const { filters } = useFilterState();
+  const [page, setPage] = useState(1);
 
-  const { data: stats = [], isLoading } = useQuery({
-    queryKey: ['response-time', 'stats', filters],
-    queryFn: () => getResolutionTimeStats(filters),
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [filters]);
+
+  // Single request — stats + overdue run in parallel on the server via Promise.all.
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ['response-time', 'all', filters, page],
+    queryFn: () => getResponseTimeAll(filters, page),
     staleTime: 30_000,
+    placeholderData: keepPreviousData,
   });
 
-  const PRIORITY_ORDER = ['low', 'medium', 'high', 'critical'];
-  const sorted = [...stats].sort(
+  const sorted = [...(data?.stats ?? [])].sort(
     (a, b) => PRIORITY_ORDER.indexOf(a.priority) - PRIORITY_ORDER.indexOf(b.priority),
   );
 
@@ -146,7 +155,15 @@ function Inner() {
           <CardTitle>Overdue Tickets</CardTitle>
         </CardHeader>
         <CardContent>
-          <OverdueTicketsTable filters={filters} />
+          <OverdueTicketsTable
+            rows={data?.overdue.rows ?? []}
+            totalCount={data?.overdue.totalCount ?? 0}
+            totalPages={data?.overdue.totalPages ?? 1}
+            page={page}
+            onPageChange={setPage}
+            isLoading={isLoading}
+            isFetching={isFetching}
+          />
         </CardContent>
       </Card>
     </div>
