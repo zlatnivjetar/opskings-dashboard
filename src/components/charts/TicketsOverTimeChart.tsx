@@ -32,8 +32,8 @@ export function TicketsOverTimeChart({ data }: { data: TicketsOverTimeRow[] }) {
         <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} width={45} />
         <Tooltip
           contentStyle={{
-            background: 'hsl(var(--card))',
-            border: '1px solid hsl(var(--border))',
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
             borderRadius: '6px',
             fontSize: 12,
           }}

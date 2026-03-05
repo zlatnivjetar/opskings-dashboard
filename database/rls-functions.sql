@@ -183,6 +183,67 @@ END;
 $$;
 
 
+-- ─── Milestone 10: Client Portal ─────────────────────────────────────────────
+
+CREATE OR REPLACE FUNCTION get_ticket_detail_rls(
+  p_user_id        TEXT,
+  p_user_role      TEXT,
+  p_client_id      TEXT,
+  p_team_member_id TEXT,
+  p_ticket_id      INT
+)
+RETURNS TABLE (
+  ticket   JSON,
+  messages JSON,
+  feedback JSON
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  PERFORM set_config('app.user_id',        p_user_id,        true);
+  PERFORM set_config('app.user_role',       p_user_role,      true);
+  PERFORM set_config('app.client_id',       p_client_id,      true);
+  PERFORM set_config('app.team_member_id',  p_team_member_id, true);
+  SET LOCAL ROLE rls_user;
+
+  RETURN QUERY
+  SELECT
+    (
+      SELECT row_to_json(t)
+      FROM (
+        SELECT t.id, t.title, tt.type_name, t.priority, t.status,
+               t.created_at, t.resolved_at
+        FROM tickets t
+        JOIN ticket_types tt ON tt.id = t.ticket_type_id
+        WHERE t.id = p_ticket_id
+      ) t
+    ) AS ticket,
+    COALESCE(
+      (
+        SELECT json_agg(m ORDER BY m.created_at)
+        FROM (
+          SELECT tm.id, tm.from_client, tm.from_team_member_id,
+                 mem.username AS team_member_name,
+                 tm.message_text, tm.created_at
+          FROM ticket_messages tm
+          LEFT JOIN team_members mem ON mem.id = tm.from_team_member_id
+          WHERE tm.ticket_id = p_ticket_id
+        ) m
+      ),
+      '[]'::json
+    ) AS messages,
+    (
+      SELECT row_to_json(f)
+      FROM (
+        SELECT id, rating, feedback_text
+        FROM ticket_feedback
+        WHERE ticket_id = p_ticket_id
+      ) f
+    ) AS feedback;
+END;
+$$;
+
+
 -- ─── Milestone 9: Response Time Analysis ─────────────────────────────────────
 
 CREATE OR REPLACE FUNCTION get_resolution_time_stats_rls(

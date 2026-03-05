@@ -1,6 +1,7 @@
 'use server';
 
 import { sql } from 'drizzle-orm';
+import { adminDb } from '@/lib/db';
 import { withRLS } from '@/lib/db/rls-client';
 import { getUserContext } from '@/lib/auth/get-user-context';
 
@@ -117,91 +118,78 @@ export async function getTicketDetail(
 ): Promise<TicketDetailResult | null> {
   const ctx = await getUserContext();
 
-  return withRLS(ctx, async (tx) => {
-    const ticketRows = await tx.execute<{
-      id: number;
-      title: string;
-      type_name: string;
-      priority: string;
-      status: string;
-      created_at: unknown;
-      resolved_at: unknown;
-    }>(sql`
-      SELECT
-        t.id,
-        t.title,
-        tt.type_name,
-        t.priority,
-        t.status,
-        t.created_at,
-        t.resolved_at
-      FROM tickets t
-      JOIN ticket_types tt ON tt.id = t.ticket_type_id
-      WHERE t.id = ${ticketId}
-    `);
+  // Calls get_ticket_detail_rls() stored function in autocommit — 1 round-trip.
+  // RLS context is set inside the function; no explicit transaction needed.
+  const clientId = ctx.clientId ? String(ctx.clientId) : '';
+  const teamMemberId = ctx.teamMemberId ? String(ctx.teamMemberId) : '';
 
-    if (ticketRows.length === 0) return null;
-    const t = ticketRows[0];
+  type RawTicket = {
+    id: number;
+    title: string;
+    type_name: string;
+    priority: string;
+    status: string;
+    created_at: unknown;
+    resolved_at: unknown;
+  };
+  type RawMessage = {
+    id: number;
+    from_client: boolean;
+    from_team_member_id: number | null;
+    team_member_name: string | null;
+    message_text: string;
+    created_at: unknown;
+  };
+  type RawFeedback = {
+    id: number;
+    rating: number | null;
+    feedback_text: string | null;
+  };
 
-    const messageRows = await tx.execute<{
-      id: number;
-      from_client: boolean;
-      from_team_member_id: number | null;
-      team_member_name: string | null;
-      message_text: string;
-      created_at: unknown;
-    }>(sql`
-      SELECT
-        tm.id,
-        tm.from_client,
-        tm.from_team_member_id,
-        mem.username AS team_member_name,
-        tm.message_text,
-        tm.created_at
-      FROM ticket_messages tm
-      LEFT JOIN team_members mem ON mem.id = tm.from_team_member_id
-      WHERE tm.ticket_id = ${ticketId}
-      ORDER BY tm.created_at ASC
-    `);
+  const rows = await adminDb.execute<{
+    ticket: RawTicket | null;
+    messages: RawMessage[];
+    feedback: RawFeedback | null;
+  }>(sql`
+    SELECT * FROM get_ticket_detail_rls(
+      ${ctx.userId},
+      ${ctx.role},
+      ${clientId},
+      ${teamMemberId},
+      ${ticketId}
+    )
+  `);
 
-    const feedbackRows = await tx.execute<{
-      id: number;
-      rating: number | null;
-      feedback_text: string | null;
-    }>(sql`
-      SELECT id, rating, feedback_text
-      FROM ticket_feedback
-      WHERE ticket_id = ${ticketId}
-    `);
+  const row = rows[0];
+  if (!row?.ticket) return null;
 
-    return {
-      ticket: {
-        id: t.id,
-        title: t.title,
-        typeName: t.type_name,
-        priority: t.priority,
-        status: t.status,
-        createdAt: toIso(t.created_at),
-        resolvedAt: t.resolved_at ? toIso(t.resolved_at) : null,
-      },
-      messages: messageRows.map((m) => ({
-        id: m.id,
-        fromClient: m.from_client,
-        fromTeamMemberId: m.from_team_member_id,
-        teamMemberName: m.team_member_name,
-        messageText: m.message_text,
-        createdAt: toIso(m.created_at),
-      })),
-      feedback:
-        feedbackRows.length > 0
-          ? {
-              id: feedbackRows[0].id,
-              rating: feedbackRows[0].rating,
-              feedbackText: feedbackRows[0].feedback_text,
-            }
-          : null,
-    };
-  });
+  const t = row.ticket;
+  return {
+    ticket: {
+      id: t.id,
+      title: t.title,
+      typeName: t.type_name,
+      priority: t.priority,
+      status: t.status,
+      createdAt: toIso(t.created_at),
+      resolvedAt: t.resolved_at ? toIso(t.resolved_at) : null,
+    },
+    messages: (row.messages ?? []).map((m) => ({
+      id: m.id,
+      fromClient: m.from_client,
+      fromTeamMemberId: m.from_team_member_id,
+      teamMemberName: m.team_member_name,
+      messageText: m.message_text,
+      createdAt: toIso(m.created_at),
+    })),
+    feedback: row.feedback
+      ? {
+          id: row.feedback.id,
+          rating: row.feedback.rating,
+          feedbackText: row.feedback.feedback_text,
+        }
+      : null,
+  };
 }
 
 export async function createTicket(data: {
