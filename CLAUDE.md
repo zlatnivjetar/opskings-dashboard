@@ -1,4 +1,4 @@
-# Current Milestone: 9
+# Current Milestone: 10
 
 ## Completed
 
@@ -11,6 +11,7 @@
 - [x] Milestone 6: Team Performance Table
 - [x] Milestone 7: Distribution Charts
 - [x] Milestone 8: Client Analysis View
+- [x] Milestone 9: Response Time Analysis
 
 ## Key Decisions (READ BEFORE EVERY MILESTONE)
 
@@ -76,6 +77,12 @@ Examples of good entries:
 - `get_client_analysis_rls()` in `database/rls-functions.sql` — uses `EXECUTE format()` with `USING` clause for dynamic ORDER BY (sort column whitelisted via `CASE`); returns `full_count` via `COUNT(*) OVER()` window function so count + data arrive in one query; `last_ticket_date` cast to TEXT via `TO_CHAR(..., 'YYYY-MM-DD"T"HH24:MI:SS"Z"')` to guarantee ISO string across postgres.js versions
 - `ClientAnalysisTable` at `src/components/dashboard/ClientAnalysisTable.tsx` — local state for search/page/sort (no URL sync); `keepPreviousData` from TanStack Query eliminates skeleton flash on param changes; `isFetching && !isLoading` drives opacity fade instead
 - Clients page at `src/app/dashboard/clients/page.tsx` — server component; role-guards with `getUserContext()` + `redirect('/portal')` before rendering the client component
+
+- `getResolutionTimeStats()` and `getOverdueTickets()` server actions in `src/lib/queries/response-time.ts` — call `get_resolution_time_stats_rls` and `get_overdue_tickets_rls` via `adminDb.execute()` (RLS inside function); accept date + teamMember filters only (no ticketType/priority — those are the dimensions being measured)
+- `expected_hours` in stats = `AVG(ticket_types.avg_resolution_hours)` for resolved tickets in each priority bucket (not a fixed lookup — it averages whatever type benchmarks land in that priority group)
+- `get_overdue_tickets_rls` uses `COUNT(*) OVER()` window function for `full_count` — pagination + total in one query, same pattern as `get_client_analysis_rls`
+- `ResponseTimeContent` client component at `src/components/dashboard/ResponseTimeContent.tsx` — contains all 'use client' logic; page.tsx is a server component that role-guards then renders it (same split as clients page)
+- `OverdueTicketsTable` receives `filters` as a prop and resets `page` state to 1 via `useEffect` when filters change
 
 _(append here after each milestone)_
 

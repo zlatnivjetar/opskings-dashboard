@@ -5,6 +5,8 @@
 -- transaction that wraps the single SELECT statement.
 --
 -- Run in Supabase SQL editor once, then redeploy.
+-- Milestone 9 functions (get_resolution_time_stats_rls, get_overdue_tickets_rls)
+-- appended at the end of this file.
 
 CREATE OR REPLACE FUNCTION get_dashboard_summary_rls(
   p_user_id          TEXT,
@@ -177,5 +179,136 @@ BEGIN
     AND (p_priority_exclude IS NULL OR t.priority       <> ALL(p_priority_exclude))
   GROUP BY DATE_TRUNC('month', t.created_at)
   ORDER BY DATE_TRUNC('month', t.created_at);
+END;
+$$;
+
+
+-- ─── Milestone 9: Response Time Analysis ─────────────────────────────────────
+
+CREATE OR REPLACE FUNCTION get_resolution_time_stats_rls(
+  p_user_id          TEXT,
+  p_user_role        TEXT,
+  p_client_id        TEXT,
+  p_team_member_id   TEXT,
+  p_date_from        TIMESTAMPTZ DEFAULT NULL,
+  p_date_to          TIMESTAMPTZ DEFAULT NULL,
+  p_assigned_include INT[]       DEFAULT NULL,
+  p_assigned_exclude INT[]       DEFAULT NULL
+)
+RETURNS TABLE (
+  priority       TEXT,
+  min_hours      DOUBLE PRECISION,
+  max_hours      DOUBLE PRECISION,
+  avg_hours      DOUBLE PRECISION,
+  median_hours   DOUBLE PRECISION,
+  expected_hours DOUBLE PRECISION
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  PERFORM set_config('app.user_id',        p_user_id,        true);
+  PERFORM set_config('app.user_role',       p_user_role,      true);
+  PERFORM set_config('app.client_id',       p_client_id,      true);
+  PERFORM set_config('app.team_member_id',  p_team_member_id, true);
+  SET LOCAL ROLE rls_user;
+
+  RETURN QUERY
+  WITH ticket_hours AS (
+    SELECT
+      t.priority,
+      EXTRACT(EPOCH FROM (t.resolved_at - t.created_at)) / 3600.0            AS actual_hours,
+      tt.avg_resolution_hours::DOUBLE PRECISION                               AS type_expected_hours
+    FROM tickets t
+    INNER JOIN ticket_types tt ON t.ticket_type_id = tt.id
+    WHERE
+      t.resolved_at IS NOT NULL
+      AND (p_date_from        IS NULL OR t.created_at  >= p_date_from)
+      AND (p_date_to          IS NULL OR t.created_at  <= p_date_to)
+      AND (p_assigned_include IS NULL OR t.assigned_to  = ANY(p_assigned_include))
+      AND (p_assigned_exclude IS NULL OR t.assigned_to <> ALL(p_assigned_exclude))
+  )
+  SELECT
+    th.priority::TEXT,
+    MIN(th.actual_hours)::DOUBLE PRECISION,
+    MAX(th.actual_hours)::DOUBLE PRECISION,
+    AVG(th.actual_hours)::DOUBLE PRECISION,
+    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY th.actual_hours)::DOUBLE PRECISION,
+    AVG(th.type_expected_hours)::DOUBLE PRECISION
+  FROM ticket_hours th
+  WHERE th.priority IS NOT NULL
+  GROUP BY th.priority
+  ORDER BY
+    CASE th.priority
+      WHEN 'low'      THEN 1
+      WHEN 'medium'   THEN 2
+      WHEN 'high'     THEN 3
+      WHEN 'critical' THEN 4
+      ELSE 5
+    END;
+END;
+$$;
+
+
+CREATE OR REPLACE FUNCTION get_overdue_tickets_rls(
+  p_user_id          TEXT,
+  p_user_role        TEXT,
+  p_client_id        TEXT,
+  p_team_member_id   TEXT,
+  p_date_from        TIMESTAMPTZ DEFAULT NULL,
+  p_date_to          TIMESTAMPTZ DEFAULT NULL,
+  p_assigned_include INT[]       DEFAULT NULL,
+  p_assigned_exclude INT[]       DEFAULT NULL,
+  p_page             INT         DEFAULT 1,
+  p_page_size        INT         DEFAULT 20
+)
+RETURNS TABLE (
+  ticket_id      INT,
+  title          TEXT,
+  client_name    TEXT,
+  type_name      TEXT,
+  priority       TEXT,
+  actual_hours   DOUBLE PRECISION,
+  expected_hours DOUBLE PRECISION,
+  excess_hours   DOUBLE PRECISION,
+  full_count     BIGINT
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_offset INT;
+BEGIN
+  PERFORM set_config('app.user_id',        p_user_id,        true);
+  PERFORM set_config('app.user_role',       p_user_role,      true);
+  PERFORM set_config('app.client_id',       p_client_id,      true);
+  PERFORM set_config('app.team_member_id',  p_team_member_id, true);
+  SET LOCAL ROLE rls_user;
+
+  v_offset := (p_page - 1) * p_page_size;
+
+  RETURN QUERY
+  SELECT
+    t.id::INT,
+    t.title::TEXT,
+    c.client_name::TEXT,
+    tt.type_name::TEXT,
+    t.priority::TEXT,
+    (EXTRACT(EPOCH FROM (t.resolved_at - t.created_at)) / 3600.0)::DOUBLE PRECISION  AS actual_hours,
+    tt.avg_resolution_hours::DOUBLE PRECISION                                          AS expected_hours,
+    (EXTRACT(EPOCH FROM (t.resolved_at - t.created_at)) / 3600.0
+      - tt.avg_resolution_hours)::DOUBLE PRECISION                                    AS excess_hours,
+    COUNT(*) OVER()::BIGINT                                                            AS full_count
+  FROM tickets t
+  INNER JOIN clients c      ON t.client_id      = c.id
+  INNER JOIN ticket_types tt ON t.ticket_type_id = tt.id
+  WHERE
+    t.resolved_at IS NOT NULL
+    AND tt.avg_resolution_hours IS NOT NULL
+    AND EXTRACT(EPOCH FROM (t.resolved_at - t.created_at)) / 3600.0 > tt.avg_resolution_hours
+    AND (p_date_from        IS NULL OR t.created_at  >= p_date_from)
+    AND (p_date_to          IS NULL OR t.created_at  <= p_date_to)
+    AND (p_assigned_include IS NULL OR t.assigned_to  = ANY(p_assigned_include))
+    AND (p_assigned_exclude IS NULL OR t.assigned_to <> ALL(p_assigned_exclude))
+  ORDER BY excess_hours DESC
+  LIMIT p_page_size OFFSET v_offset;
 END;
 $$;
