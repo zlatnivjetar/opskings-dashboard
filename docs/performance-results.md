@@ -49,54 +49,55 @@ Result: 348 ms → 135 ms (2.6× speedup). Also removed dynamic SQL (`EXECUTE
 FORMAT`) in favour of static SQL with `CASE`-based ORDER BY, enabling plan
 caching. Replaced function deployed to Supabase.
 
-## E2E Results (Browser Network Tab)
+## E2E Results — Production (Vercel)
 
-Measured via Chrome DevTools → Network tab on a local dev server (`npm run dev`).
-Times are full round-trips including Next.js server action overhead, serialisation,
-and local loopback latency.
-
-For pages that originally fired two sequential requests, the **higher value** is
-used as the baseline since it was the bottleneck (the second request could not
-start until the first completed).
+Measured via Chrome DevTools → Network tab on the deployed Vercel instance.
+Times are full round-trips including browser→Vercel serverless (~100-150 ms) +
+Vercel→Supabase (~100-150 ms) network latency. Raw query times are ~150-200 ms
+lower (see benchmark results above).
 
 ### Page Load
 
-| Page | Request(s) | Time | Notes |
-|------|-----------|------|-------|
-| `/dashboard` | 1 (was 2 sequential) | ~210 ms | getDashboardAll |
-| `/dashboard/team` | 1 | ~441 ms | getTeamPerformance |
-| `/dashboard/distribution` | 1 (was 2 sequential) | ~418 ms | getDistributionAll |
-| `/dashboard/clients` | 1 | ~199 ms | getClientAnalysis |
-| `/dashboard/response-time` | 1 (was 2 sequential) | ~319 ms | getResponseTimeAll |
+| Page | Time | Notes |
+|------|------|-------|
+| `/dashboard` | ~357 ms | getDashboardAll (combined summary + chart) |
+| `/dashboard/team` | ~671 ms | getTeamPerformance (LEFT JOIN chain) |
+| `/dashboard/distribution` | ~637 ms | getDistributionAll (combined type + priority) |
+| `/dashboard/clients` | ~347 ms | getClientAnalysis (CTE optimization) |
+| `/dashboard/response-time` | ~449 ms | getResponseTimeAll (combined stats + overdue) |
 
 ### Interactions
 
-| Page / Action | Time | Notes |
-|--------------|------|-------|
-| Dashboard — apply filter | ~161 ms | |
-| Dashboard — remove filter | ~43 ms | Next.js RSC navigation payload, no data fetch |
-| Distribution — apply filter | ~392 ms | (higher of ~384 ms / ~392 ms) |
-| Distribution — remove filter | ~34 ms | RSC navigation payload |
-| Client analysis — search (debounced) | ~174 ms | 300 ms debounce before request fires |
-| Client analysis — sort column | ~185 ms | |
-| Client analysis — page navigation | ~178 ms | |
-| Response time — page navigation | ~284 ms | stats + overdue refetch together |
-| Response time — apply date filter | ~146 ms | (lower of ~146 ms / ~143 ms pair) |
+| Page / Action | Time |
+|--------------|------|
+| Dashboard — apply filter | ~383 ms |
+| Distribution — apply filter | ~664 ms |
+| Client analysis — sort column | ~390 ms |
+| Response time — apply filter | ~453 ms |
 
-### Sequential → Single Request Fix
+### Optimizations Applied
 
-E2E testing revealed that Next.js serialises concurrent server action calls from
-the same page — the second POST waits for the first to complete. Three pages were
-affected:
+1. **Sequential → single request** — Three pages originally fired two sequential
+   server action calls (Next.js serialises concurrent calls per page). Combined
+   each pair into a single action with `Promise.all` for server-side parallelism.
 
-| Page | Before (2 sequential) | After (1 combined) | Saving |
-|------|----------------------|-------------------|--------|
-| Dashboard | ~210 ms + ~187 ms | ~210 ms | ~187 ms |
-| Distribution | ~418 ms + ~392 ms | ~418 ms | ~392 ms |
-| Response Time | ~319 ms + ~260 ms | ~319 ms | ~260 ms |
+2. **Middleware bypass for server actions** — Server actions verify auth internally
+   via `getUserContext()`. The middleware's self-fetch to `/api/auth/get-session`
+   was redundant and added ~100-200 ms per call. Requests with the `Next-Action`
+   header now skip the session check.
 
-Fix: collapsed each pair into a single server action using `Promise.all` for
-server-side parallelism — one HTTP round-trip, both DB queries run concurrently.
+3. **Combined reference data** — FilterBar's two separate reference data calls
+   (`getTeamMembers` + `getTicketTypes`) merged into one `getReferenceData()`
+   action, eliminating one serialised round-trip on cold loads.
+
+4. **Disabled link prefetching** — Sidebar and auth page `<Link>` components had
+   `prefetch` enabled by default, firing 5-10 simultaneous RSC fetches on every
+   page load. Disabled with `prefetch={false}`.
+
+5. **Native history API for filters** — Replaced `router.replace()` with
+   `window.history.replaceState()` for URL-synced filters. Next.js still picks up
+   the URL change for `useSearchParams()` but no longer triggers redundant RSC
+   soft-navigation refetches.
 
 ---
 

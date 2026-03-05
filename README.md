@@ -1,6 +1,6 @@
 # OpsKings Support Analytics Dashboard
 
-A full-stack support analytics dashboard built for the OpsKings development interview. Processes ~40,000 tickets across 50 clients and 15 team members with role-based access control, real-time filtering, and sub-500ms query performance.
+A full-stack support analytics dashboard built for the OpsKings development interview. Processes ~40,000 tickets across 50 clients and 15 team members with role-based access control, real-time filtering, and optimized query performance.
 
 > **[Live Demo](<!-- REPLACE: your Vercel URL -->)** · **[Video Walkthrough](<!-- REPLACE: your Loom URL -->)**
 
@@ -234,34 +234,28 @@ Measured with a benchmark script (`scripts/benchmark.ts`), 3-run average, includ
 
 **All 8 queries pass their performance targets.**
 
-### End-to-End Browser Performance
+### End-to-End Production Performance
 
-Full round-trip times measured via Chrome DevTools Network tab:
+Full round-trip times measured via Chrome DevTools Network tab on the deployed Vercel instance. These include browser→Vercel serverless (~100-150 ms) + Vercel→Supabase (~100-150 ms) network latency — roughly 150-200 ms overhead on top of raw query time.
 
 | Page | Load Time | Notes |
 |------|-----------|-------|
-| Dashboard | ~210 ms | Combined summary + chart in one action |
-| Team Performance | ~441 ms | Single query with LEFT JOIN chain |
-| Distribution | ~418 ms | Combined type + priority in one action |
-| Client Analysis | ~199 ms | Paginated with CTE optimization |
-| Response Time | ~319 ms | Combined stats + overdue in one action |
+| Dashboard | ~357 ms | Combined summary + chart in one action |
+| Team Performance | ~671 ms | Single query with LEFT JOIN chain |
+| Distribution | ~637 ms | Combined type + priority in one action |
+| Client Analysis | ~347 ms | Paginated with CTE optimization |
+| Response Time | ~449 ms | Combined stats + overdue in one action |
 
 | Interaction | Time |
 |-------------|------|
-| Apply filter | ~161 ms |
-| Search clients | ~174 ms |
-| Sort column | ~185 ms |
-| Page navigation | ~178 ms |
+| Apply filter | ~383 ms |
+| Sort column (clients) | ~390 ms |
+| Filter (response time) | ~453 ms |
+| Filter (distribution) | ~664 ms |
 
-### Sequential-to-Parallel Fix
+### Optimization: Sequential-to-Parallel Fix
 
-Three pages originally fired two sequential server action calls (Next.js serializes concurrent calls per page). Combining them with `Promise.all` saved one full round-trip per page:
-
-| Page | Before (2 sequential) | After (1 combined) | Saved |
-|------|----------------------|-------------------|-------|
-| Dashboard | ~397 ms | ~210 ms | ~187 ms |
-| Distribution | ~810 ms | ~418 ms | ~392 ms |
-| Response Time | ~579 ms | ~319 ms | ~260 ms |
+Three pages originally fired two sequential server action calls (Next.js serializes concurrent calls per page). Combining them with `Promise.all` saved one full round-trip per page. Additionally, middleware session checks were bypassed for server action requests (they verify auth internally via `getUserContext()`), and FilterBar's two reference data calls were merged into one.
 
 ---
 
