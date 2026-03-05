@@ -1,4 +1,4 @@
-# Current Milestone: 11
+# Current Milestone: 12
 
 ## Completed
 
@@ -13,6 +13,7 @@
 - [x] Milestone 8: Client Analysis View
 - [x] Milestone 9: Response Time Analysis
 - [x] Milestone 10: Client Portal
+- [x] Milestone 11: Performance Optimization + Testing
 
 ## Key Decisions (READ BEFORE EVERY MILESTONE)
 
@@ -91,6 +92,13 @@ Examples of good entries:
 - Client components in `src/components/portal/`: `SignOutButton` (authClient.signOut + router.push), `NewTicketForm` (calls createTicket, router.push on success), `FeedbackForm` (calls submitFeedback, router.refresh on success)
 - `src/components/ui/textarea.tsx` added (was missing from original shadcn install)
 - Ticket detail page uses `router.refresh()` after feedback submission so the server component re-fetches and hides the form without a full navigation
+
+- `get_client_analysis_rls()` rewritten with CTE pre-aggregation (ticket_stats + payment_stats CTEs) — eliminates the n_tickets × n_payments cross-join that produced 283k rows; static SQL replaces `EXECUTE FORMAT` enabling plan caching; function deployed to Supabase
+- Next.js serialises concurrent server action calls per page — never use two separate `useQuery` calls for data needed on the same render; instead use a combined server action with `Promise.all` and a single `useQuery`
+- Combined actions: `getDashboardAll` (summary + ticketsOverTime), `getDistributionAll` (byType + byPriority), `getResponseTimeAll(filters, page, pageSize)` (stats + overdue) — all in `src/lib/queries/dashboard.ts` and `src/lib/queries/response-time.ts`
+- `OverdueTicketsTable` now receives data as props (rows, totalCount, totalPages, page, onPageChange, isLoading, isFetching) — query and page state owned by `ResponseTimeContent`
+- `scripts/` excluded from tsconfig `exclude` array — prevents Next.js build from type-checking benchmark/seed scripts
+- Performance results and E2E browser timings documented in `docs/performance-results.md`; benchmark script at `scripts/benchmark.ts`
 
 _(append here after each milestone)_
 
