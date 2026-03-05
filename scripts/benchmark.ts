@@ -188,7 +188,7 @@ async function main() {
       FROM tickets t
       GROUP BY t.priority
       ORDER BY CASE priority
-        WHEN 'low' THEN 1 WHEN 'medium' THEN 2 WHEN 'high' THEN 3 WHEN 'critical' THEN 4 ELSE 5 END
+        WHEN 'low' THEN 1 WHEN 'medium' THEN 2 WHEN 'high' THEN 3 WHEN 'urgent' THEN 4 ELSE 5 END
     `),
   );
   const tbp_flt = await timeQuery(() =>
@@ -203,7 +203,7 @@ async function main() {
         AND t.assigned_to = ANY(${[1]}::int[])
       GROUP BY t.priority
       ORDER BY CASE priority
-        WHEN 'low' THEN 1 WHEN 'medium' THEN 2 WHEN 'high' THEN 3 WHEN 'critical' THEN 4 ELSE 5 END
+        WHEN 'low' THEN 1 WHEN 'medium' THEN 2 WHEN 'high' THEN 3 WHEN 'urgent' THEN 4 ELSE 5 END
     `),
   );
   results.push({ label: 'Tickets by priority', target: 800, unfiltered: tbp_unf, filtered: tbp_flt });

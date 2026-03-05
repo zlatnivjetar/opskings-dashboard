@@ -19,5 +19,5 @@ export type FilterState = {
   priority?: MultiFilter;
 };
 
-export const PRIORITY_OPTIONS = ['low', 'medium', 'high', 'critical'] as const;
+export const PRIORITY_OPTIONS = ['low', 'medium', 'high', 'urgent'] as const;
 export type Priority = (typeof PRIORITY_OPTIONS)[number];

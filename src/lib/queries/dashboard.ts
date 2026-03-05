@@ -196,7 +196,7 @@ export async function getTicketsByPriority(filters: FilterState): Promise<Ticket
       .where(whereClause)
       .groupBy(tickets.priority)
       .orderBy(
-        sql`CASE priority WHEN 'low' THEN 1 WHEN 'medium' THEN 2 WHEN 'high' THEN 3 WHEN 'critical' THEN 4 ELSE 5 END`,
+        sql`CASE priority WHEN 'low' THEN 1 WHEN 'medium' THEN 2 WHEN 'high' THEN 3 WHEN 'urgent' THEN 4 ELSE 5 END`,
       );
 
     return rows.map((r) => ({
@@ -321,7 +321,7 @@ export async function getDistributionAll(
         .where(whereClause)
         .groupBy(tickets.priority)
         .orderBy(
-          sql`CASE priority WHEN 'low' THEN 1 WHEN 'medium' THEN 2 WHEN 'high' THEN 3 WHEN 'critical' THEN 4 ELSE 5 END`,
+          sql`CASE priority WHEN 'low' THEN 1 WHEN 'medium' THEN 2 WHEN 'high' THEN 3 WHEN 'urgent' THEN 4 ELSE 5 END`,
         ),
     ),
   ]);

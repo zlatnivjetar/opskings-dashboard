@@ -329,7 +329,7 @@ BEGIN
       WHEN 'low'      THEN 1
       WHEN 'medium'   THEN 2
       WHEN 'high'     THEN 3
-      WHEN 'critical' THEN 4
+      WHEN 'urgent' THEN 4
       ELSE 5
     END;
 END;

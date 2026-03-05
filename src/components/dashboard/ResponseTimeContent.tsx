@@ -44,7 +44,7 @@ function VarianceBadge({ actual, expected }: { actual: number; expected: number 
   );
 }
 
-const PRIORITY_ORDER = ['low', 'medium', 'high', 'critical'];
+const PRIORITY_ORDER = ['low', 'medium', 'high', 'urgent'];
 
 function Inner() {
   const { filters } = useFilterState();
