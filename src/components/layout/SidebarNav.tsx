@@ -15,6 +15,7 @@ export function SidebarNav({ links }: { links: NavLink[] }) {
         <Link
           key={href}
           href={href}
+          prefetch={false}
           className={cn(
             'px-3 py-2 rounded-md text-sm font-medium transition-colors',
             pathname === href
