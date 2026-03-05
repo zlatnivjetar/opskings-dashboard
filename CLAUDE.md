@@ -1,4 +1,4 @@
-# Current Milestone: 12
+# Current Milestone: COMPLETE
 
 ## Completed
 
@@ -14,6 +14,7 @@
 - [x] Milestone 9: Response Time Analysis
 - [x] Milestone 10: Client Portal
 - [x] Milestone 11: Performance Optimization + Testing
+- [x] Milestone 12: Deploy + Documentation
 
 ## Key Decisions (READ BEFORE EVERY MILESTONE)
 
@@ -105,6 +106,9 @@ Examples of good entries:
 - Portal layout no longer fetches email itself — that moved into `Sidebar`; portal layout only does the `team_member` role-guard redirect
 - All portal pages own their `p-6` outer padding — the old layout's `px-4 py-6` container is gone; dashboard pages already owned theirs via `DashboardContent`'s `p-6` wrapper
 - `SignOutButton` in `src/components/portal/SignOutButton.tsx` is `variant="destructive" className="w-full"` — only rendered inside the sidebar now
+
+- `.env.example` committed to repo (`.gitignore` has `!.env.example` exception) — contains placeholder values for `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`
+- README.md is the polished interview-facing document — includes architecture diagram, RLS explanation, performance tables, scaling strategy, setup instructions, and screenshot/video placeholders
 
 _(append here after each milestone)_
 
