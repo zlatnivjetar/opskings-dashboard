@@ -13,7 +13,7 @@ export function SignOutButton() {
   }
 
   return (
-    <Button variant="outline" size="sm" onClick={handleSignOut}>
+    <Button variant="destructive" size="sm" className="w-full" onClick={handleSignOut}>
       Sign out
     </Button>
   );

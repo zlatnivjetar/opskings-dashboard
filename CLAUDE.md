@@ -100,6 +100,12 @@ Examples of good entries:
 - `scripts/` excluded from tsconfig `exclude` array — prevents Next.js build from type-checking benchmark/seed scripts
 - Performance results and E2E browser timings documented in `docs/performance-results.md`; benchmark script at `scripts/benchmark.ts`
 
+- Shared `Sidebar` server component at `src/components/layout/Sidebar.tsx` — reads `getUserContext()` for role and `auth.api.getSession()` for email; renders role-specific nav links via `SidebarNav` client component (`src/components/layout/SidebarNav.tsx`) which uses `usePathname()` for active-link highlighting
+- Both `dashboard/layout.tsx` and `portal/layout.tsx` use `flex h-screen` with `<Sidebar />` + `<main className="flex-1 overflow-y-auto">` — no `ml-*` offset needed
+- Portal layout no longer fetches email itself — that moved into `Sidebar`; portal layout only does the `team_member` role-guard redirect
+- All portal pages own their `p-6` outer padding — the old layout's `px-4 py-6` container is gone; dashboard pages already owned theirs via `DashboardContent`'s `p-6` wrapper
+- `SignOutButton` in `src/components/portal/SignOutButton.tsx` is `variant="destructive" className="w-full"` — only rendered inside the sidebar now
+
 _(append here after each milestone)_
 
 ## Completion Protocol

@@ -31,7 +31,7 @@ export default async function PortalPage({
   const { rows, totalPages } = await getMyTickets({ page, pageSize: 20 });
 
   return (
-    <div className="space-y-4">
+    <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">My Tickets</h1>
         <Link href="/portal/new">

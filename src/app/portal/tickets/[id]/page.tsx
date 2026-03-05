@@ -38,7 +38,7 @@ export default async function TicketDetailPage({
   const { ticket, messages, feedback } = data;
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="p-6 space-y-6 max-w-3xl">
       {/* Back link */}
       <Link href="/portal">
         <Button variant="ghost" size="sm" className="pl-0">
