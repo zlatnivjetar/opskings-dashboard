@@ -84,24 +84,13 @@ RETURNS TABLE (
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  v_sort_col TEXT;
-  v_sort_dir TEXT;
-  v_offset   INT;
-  v_search   TEXT;
+  v_offset  INT;
+  v_search  TEXT;
+  v_asc     BOOL;
 BEGIN
-  -- Whitelist sort column to prevent SQL injection
-  v_sort_col := CASE p_sort_by
-    WHEN 'clientName'     THEN 'c.client_name'
-    WHEN 'planType'       THEN 'c.plan_type'
-    WHEN 'totalTickets'   THEN 'total_tickets'
-    WHEN 'openTickets'    THEN 'open_tickets'
-    WHEN 'totalSpent'     THEN 'total_spent'
-    WHEN 'lastTicketDate' THEN 'last_ticket_date'
-    ELSE 'total_tickets'
-  END;
-  v_sort_dir := CASE WHEN lower(p_sort_order) = 'asc' THEN 'ASC' ELSE 'DESC' END;
-  v_offset   := (p_page - 1) * p_page_size;
-  v_search   := '%' || COALESCE(p_search, '') || '%';
+  v_offset := (p_page - 1) * p_page_size;
+  v_search := '%' || COALESCE(p_search, '') || '%';
+  v_asc    := lower(p_sort_order) = 'asc';
 
   PERFORM set_config('app.user_id',        p_user_id,        true);
   PERFORM set_config('app.user_role',       p_user_role,      true);
@@ -109,27 +98,64 @@ BEGIN
   PERFORM set_config('app.team_member_id',  p_team_member_id, true);
   SET LOCAL ROLE rls_user;
 
-  RETURN QUERY EXECUTE format($q$
+  -- Pre-aggregate tickets and payments separately to avoid the cross-join
+  -- that occurs when both are joined directly to clients in a single query.
+  -- Without CTEs the planner produces ~clients × tickets × payments rows
+  -- before GROUP BY, which is ~280k rows for 50 clients.  With CTEs each
+  -- table is scanned once and the final join is 50 × 50 rows.
+  RETURN QUERY
+  WITH ticket_stats AS (
     SELECT
-      c.id::INT,
-      c.client_name::TEXT,
-      c.plan_type::TEXT,
-      c.status::TEXT,
-      COUNT(t.id)::BIGINT                                               AS total_tickets,
-      COUNT(t.id) FILTER (WHERE t.status = 'open')::BIGINT             AS open_tickets,
-      SUM(p.amount_usd) FILTER (WHERE p.status = 'completed')::NUMERIC AS total_spent,
-      TO_CHAR(MAX(t.created_at) AT TIME ZONE 'UTC',
-              'YYYY-MM-DD"T"HH24:MI:SS"Z"')::TEXT                      AS last_ticket_date,
-      COUNT(*) OVER()::BIGINT                                           AS full_count
+      t.client_id,
+      COUNT(*)                                              AS total_tickets,
+      COUNT(*) FILTER (WHERE t.status = 'open')             AS open_tickets,
+      MAX(t.created_at)                                     AS last_ticket_at
+    FROM tickets t
+    GROUP BY t.client_id
+  ),
+  payment_stats AS (
+    SELECT
+      py.client_id,
+      SUM(py.amount_usd) FILTER (WHERE py.status = 'completed') AS total_spent
+    FROM payments py
+    GROUP BY py.client_id
+  ),
+  client_rows AS (
+    SELECT
+      c.id::INT                                                             AS id,
+      c.client_name::TEXT                                                   AS client_name,
+      c.plan_type::TEXT                                                     AS plan_type,
+      c.status::TEXT                                                        AS status,
+      COALESCE(ts.total_tickets, 0)::BIGINT                                 AS total_tickets,
+      COALESCE(ts.open_tickets,  0)::BIGINT                                 AS open_tickets,
+      COALESCE(ps.total_spent,   0)::NUMERIC                                AS total_spent,
+      TO_CHAR(ts.last_ticket_at AT TIME ZONE 'UTC',
+              'YYYY-MM-DD"T"HH24:MI:SS"Z"')::TEXT                          AS last_ticket_date
     FROM clients c
-    LEFT JOIN tickets t ON t.client_id = c.id
-    LEFT JOIN payments p ON p.client_id = c.id
-    WHERE ($1 = '' OR c.client_name ILIKE $2)
-    GROUP BY c.id, c.client_name, c.plan_type, c.status
-    ORDER BY %s %s NULLS LAST
-    LIMIT $3 OFFSET $4
-  $q$, v_sort_col, v_sort_dir)
-  USING COALESCE(p_search, ''), v_search, p_page_size, v_offset;
+    LEFT JOIN ticket_stats  ts ON ts.client_id  = c.id
+    LEFT JOIN payment_stats ps ON ps.client_id  = c.id
+    WHERE (COALESCE(p_search, '') = '' OR c.client_name ILIKE v_search)
+  )
+  SELECT
+    cr.id, cr.client_name, cr.plan_type, cr.status,
+    cr.total_tickets, cr.open_tickets, cr.total_spent, cr.last_ticket_date,
+    COUNT(*) OVER()::BIGINT AS full_count
+  FROM client_rows cr
+  ORDER BY
+    CASE WHEN p_sort_by = 'clientName'     AND v_asc  THEN cr.client_name                     END ASC  NULLS LAST,
+    CASE WHEN p_sort_by = 'clientName'     AND NOT v_asc THEN cr.client_name                  END DESC NULLS LAST,
+    CASE WHEN p_sort_by = 'planType'       AND v_asc  THEN cr.plan_type                       END ASC  NULLS LAST,
+    CASE WHEN p_sort_by = 'planType'       AND NOT v_asc THEN cr.plan_type                    END DESC NULLS LAST,
+    CASE WHEN p_sort_by = 'totalTickets'   AND v_asc  THEN cr.total_tickets                   END ASC  NULLS LAST,
+    CASE WHEN p_sort_by = 'totalTickets'   AND NOT v_asc THEN cr.total_tickets                END DESC NULLS LAST,
+    CASE WHEN p_sort_by = 'openTickets'    AND v_asc  THEN cr.open_tickets                    END ASC  NULLS LAST,
+    CASE WHEN p_sort_by = 'openTickets'    AND NOT v_asc THEN cr.open_tickets                 END DESC NULLS LAST,
+    CASE WHEN p_sort_by = 'totalSpent'     AND v_asc  THEN cr.total_spent                     END ASC  NULLS LAST,
+    CASE WHEN p_sort_by = 'totalSpent'     AND NOT v_asc THEN cr.total_spent                  END DESC NULLS LAST,
+    CASE WHEN p_sort_by = 'lastTicketDate' AND v_asc  THEN cr.last_ticket_date                END ASC  NULLS LAST,
+    CASE WHEN p_sort_by = 'lastTicketDate' AND NOT v_asc THEN cr.last_ticket_date             END DESC NULLS LAST,
+    cr.total_tickets DESC NULLS LAST
+  LIMIT p_page_size OFFSET v_offset;
 END;
 $$;
 
