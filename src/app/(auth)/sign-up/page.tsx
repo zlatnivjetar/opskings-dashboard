@@ -85,7 +85,7 @@ export default function SignUpPage() {
             </Button>
             <p className="text-sm text-muted-foreground">
               Already have an account?{' '}
-              <Link href="/sign-in" className="underline">
+              <Link href="/sign-in" prefetch={false} className="underline">
                 Sign in
               </Link>
             </p>

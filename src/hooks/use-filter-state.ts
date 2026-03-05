@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
-import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { useSearchParams, usePathname } from 'next/navigation';
 import type { FilterState, DateFilter, MultiFilter } from '@/types/filters';
 
 // URL param keys
@@ -89,19 +89,19 @@ function serializeFilters(filters: FilterState): string {
 }
 
 export function useFilterState() {
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const filters = parseFilters(searchParams);
 
+  // Use native history API — Next.js intercepts replaceState and updates
+  // useSearchParams() without triggering an RSC soft-navigation refetch.
   const updateURL = useCallback(
     (next: FilterState) => {
       const qs = serializeFilters(next);
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+      window.history.replaceState(null, '', qs ? `${pathname}?${qs}` : pathname);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [router, pathname, searchParams],
+    [pathname],
   );
 
   const setFilter = useCallback(

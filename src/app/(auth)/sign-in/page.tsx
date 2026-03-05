@@ -74,7 +74,7 @@ export default function SignInPage() {
             </Button>
             <p className="text-sm text-muted-foreground">
               No account?{' '}
-              <Link href="/sign-up" className="underline">
+              <Link href="/sign-up" prefetch={false} className="underline">
                 Sign up
               </Link>
             </p>
