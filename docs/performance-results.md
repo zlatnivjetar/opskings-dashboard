@@ -49,6 +49,57 @@ Result: 348 ms → 135 ms (2.6× speedup). Also removed dynamic SQL (`EXECUTE
 FORMAT`) in favour of static SQL with `CASE`-based ORDER BY, enabling plan
 caching. Replaced function deployed to Supabase.
 
+## E2E Results (Browser Network Tab)
+
+Measured via Chrome DevTools → Network tab on a local dev server (`npm run dev`).
+Times are full round-trips including Next.js server action overhead, serialisation,
+and local loopback latency.
+
+For pages that originally fired two sequential requests, the **higher value** is
+used as the baseline since it was the bottleneck (the second request could not
+start until the first completed).
+
+### Page Load
+
+| Page | Request(s) | Time | Notes |
+|------|-----------|------|-------|
+| `/dashboard` | 1 (was 2 sequential) | ~210 ms | getDashboardAll |
+| `/dashboard/team` | 1 | ~441 ms | getTeamPerformance |
+| `/dashboard/distribution` | 1 (was 2 sequential) | ~418 ms | getDistributionAll |
+| `/dashboard/clients` | 1 | ~199 ms | getClientAnalysis |
+| `/dashboard/response-time` | 1 (was 2 sequential) | ~319 ms | getResponseTimeAll |
+
+### Interactions
+
+| Page / Action | Time | Notes |
+|--------------|------|-------|
+| Dashboard — apply filter | ~161 ms | |
+| Dashboard — remove filter | ~43 ms | Next.js RSC navigation payload, no data fetch |
+| Distribution — apply filter | ~392 ms | (higher of ~384 ms / ~392 ms) |
+| Distribution — remove filter | ~34 ms | RSC navigation payload |
+| Client analysis — search (debounced) | ~174 ms | 300 ms debounce before request fires |
+| Client analysis — sort column | ~185 ms | |
+| Client analysis — page navigation | ~178 ms | |
+| Response time — page navigation | ~284 ms | stats + overdue refetch together |
+| Response time — apply date filter | ~146 ms | (lower of ~146 ms / ~143 ms pair) |
+
+### Sequential → Single Request Fix
+
+E2E testing revealed that Next.js serialises concurrent server action calls from
+the same page — the second POST waits for the first to complete. Three pages were
+affected:
+
+| Page | Before (2 sequential) | After (1 combined) | Saving |
+|------|----------------------|-------------------|--------|
+| Dashboard | ~210 ms + ~187 ms | ~210 ms | ~187 ms |
+| Distribution | ~418 ms + ~392 ms | ~418 ms | ~392 ms |
+| Response Time | ~319 ms + ~260 ms | ~319 ms | ~260 ms |
+
+Fix: collapsed each pair into a single server action using `Promise.all` for
+server-side parallelism — one HTTP round-trip, both DB queries run concurrently.
+
+---
+
 ## Architecture Notes
 
 ### No N+1 Queries
@@ -61,13 +112,12 @@ All queries fetch data in a single round-trip:
 
 ### Parallel Data Fetching
 
-Dashboard page (`DashboardContent.tsx`): `SummaryCards` and `TicketsChart` are
-separate components rendered simultaneously. Both mount at the same time, firing
-their `useQuery` hooks in parallel — two concurrent server action requests.
+Each page that needs multiple data sets uses a single combined server action with
+`Promise.all` for server-side parallelism and a single `useQuery` on the client:
 
-Distribution page (`distribution/page.tsx`): `getTicketsByType` and
-`getTicketsByPriority` queries are declared in the same `Inner()` component and
-both fire at mount — parallel.
+- `getDashboardAll` — summary + ticketsOverTime
+- `getDistributionAll` — byType + byPriority
+- `getResponseTimeAll(filters, page)` — stats + overdue tickets
 
 ### TanStack Query Caching
 
