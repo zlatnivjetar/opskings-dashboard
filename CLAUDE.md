@@ -1,4 +1,4 @@
-# Current Milestone: 8
+# Current Milestone: 9
 
 ## Completed
 
@@ -10,6 +10,7 @@
 - [x] Milestone 5: Dashboard Overview Cards + Tickets Over Time
 - [x] Milestone 6: Team Performance Table
 - [x] Milestone 7: Distribution Charts
+- [x] Milestone 8: Client Analysis View
 
 ## Key Decisions (READ BEFORE EVERY MILESTONE)
 
@@ -70,6 +71,11 @@ Examples of good entries:
 - `TicketsByTypeChart` at `src/components/charts/TicketsByTypeChart.tsx` — Recharts PieChart donut; 14-color palette; percentage labels rendered via `any`-typed custom label function (Recharts `PieLabelRenderProps` doesn't include `percentage` in its type despite passing it at runtime)
 - `TicketsByPriorityChart` at `src/components/charts/TicketsByPriorityChart.tsx` — stacked BarChart; priority order enforced via `CASE` in SQL ORDER BY; open=red/in_progress=yellow/resolved=green
 - Distribution page at `src/app/dashboard/distribution/page.tsx` — client component following same `Inner` + outer `<Suspense>` pattern as DashboardContent
+
+- `getClientAnalysis()` server action in `src/lib/queries/clients.ts` — calls `get_client_analysis_rls()` stored function via `adminDb.execute()` (not `withRLS`); RLS enforcement is inside the function; accepts search, page, pageSize, sortBy, sortOrder params
+- `get_client_analysis_rls()` in `database/rls-functions.sql` — uses `EXECUTE format()` with `USING` clause for dynamic ORDER BY (sort column whitelisted via `CASE`); returns `full_count` via `COUNT(*) OVER()` window function so count + data arrive in one query; `last_ticket_date` cast to TEXT via `TO_CHAR(..., 'YYYY-MM-DD"T"HH24:MI:SS"Z"')` to guarantee ISO string across postgres.js versions
+- `ClientAnalysisTable` at `src/components/dashboard/ClientAnalysisTable.tsx` — local state for search/page/sort (no URL sync); `keepPreviousData` from TanStack Query eliminates skeleton flash on param changes; `isFetching && !isLoading` drives opacity fade instead
+- Clients page at `src/app/dashboard/clients/page.tsx` — server component; role-guards with `getUserContext()` + `redirect('/portal')` before rendering the client component
 
 _(append here after each milestone)_
 
