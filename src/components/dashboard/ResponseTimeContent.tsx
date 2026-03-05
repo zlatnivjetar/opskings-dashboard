@@ -1,7 +1,7 @@
 'use client';
 
-import { Suspense, useState, useEffect } from 'react';
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { Suspense } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -48,19 +48,13 @@ const PRIORITY_ORDER = ['low', 'medium', 'high', 'urgent'];
 
 function Inner() {
   const { filters } = useFilterState();
-  const [page, setPage] = useState(1);
 
-  // Reset to page 1 when filters change
-  useEffect(() => {
-    setPage(1);
-  }, [filters]);
-
-  // Single request — stats + overdue run in parallel on the server via Promise.all.
-  const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['response-time', 'all', filters, page],
-    queryFn: () => getResponseTimeAll(filters, page),
+  // Single request — stats + ALL overdue rows fetched together.
+  // Pagination is handled client-side in OverdueTicketsTable.
+  const { data, isLoading } = useQuery({
+    queryKey: ['response-time', 'all', filters],
+    queryFn: () => getResponseTimeAll(filters),
     staleTime: 30_000,
-    placeholderData: keepPreviousData,
   });
 
   const sorted = [...(data?.stats ?? [])].sort(
@@ -157,12 +151,7 @@ function Inner() {
         <CardContent>
           <OverdueTicketsTable
             rows={data?.overdue.rows ?? []}
-            totalCount={data?.overdue.totalCount ?? 0}
-            totalPages={data?.overdue.totalPages ?? 1}
-            page={page}
-            onPageChange={setPage}
             isLoading={isLoading}
-            isFetching={isFetching}
           />
         </CardContent>
       </Card>

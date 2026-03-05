@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Table,
   TableBody,
@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   getClientAnalysis,
+  type ClientAnalysisRow,
   type SortableColumn,
 } from '@/lib/queries/clients';
 
@@ -53,29 +54,54 @@ const COLUMNS: Column[] = [
   { key: 'lastTicketDate', label: 'Last Ticket' },
 ];
 
+const PAGE_SIZE = 20;
+
+function compareRows(a: ClientAnalysisRow, b: ClientAnalysisRow, sortBy: SortableColumn, sortOrder: 'asc' | 'desc'): number {
+  const aVal = a[sortBy];
+  const bVal = b[sortBy];
+  if (aVal == null && bVal == null) return 0;
+  if (aVal == null) return 1;
+  if (bVal == null) return -1;
+  const cmp = typeof aVal === 'string'
+    ? aVal.localeCompare(bVal as string)
+    : (aVal as number) - (bVal as number);
+  return sortOrder === 'asc' ? cmp : -cmp;
+}
+
 export function ClientAnalysisTable() {
   const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState<SortableColumn>('totalTickets');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(search);
-      setPage(1);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [search]);
-
-  const queryParams = { search: debouncedSearch, page, pageSize: 20, sortBy, sortOrder };
-
-  const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['clients', 'analysis', queryParams],
-    queryFn: () => getClientAnalysis(queryParams),
+  // Fetch ALL clients once — only ~50 rows.
+  const { data, isLoading } = useQuery({
+    queryKey: ['clients', 'analysis', 'all'],
+    queryFn: () => getClientAnalysis({ pageSize: 1000 }),
     staleTime: 30_000,
-    placeholderData: keepPreviousData,
   });
+
+  const allRows = data?.rows ?? [];
+
+  // Client-side search
+  const filtered = useMemo(() => {
+    if (!search) return allRows;
+    const q = search.toLowerCase();
+    return allRows.filter((r) =>
+      r.clientName.toLowerCase().includes(q) || r.planType.toLowerCase().includes(q),
+    );
+  }, [allRows, search]);
+
+  // Client-side sort
+  const sorted = useMemo(
+    () => [...filtered].sort((a, b) => compareRows(a, b, sortBy, sortOrder)),
+    [filtered, sortBy, sortOrder],
+  );
+
+  // Client-side pagination
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageRows = sorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   const handleSort = (col: SortableColumn) => {
     if (sortBy === col) {
@@ -87,6 +113,11 @@ export function ClientAnalysisTable() {
     setPage(1);
   };
 
+  const handleSearch = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
+
   const sortIndicator = (col: SortableColumn) => {
     if (sortBy !== col) return <span className="ml-1 text-muted-foreground/40">↕</span>;
     return (
@@ -94,20 +125,16 @@ export function ClientAnalysisTable() {
     );
   };
 
-  const rows = data?.rows ?? [];
-  const totalPages = data?.totalPages ?? 1;
-  const totalCount = data?.totalCount ?? 0;
-
   return (
     <div className="space-y-4">
       <Input
         placeholder="Search clients..."
         value={search}
-        onChange={(e) => setSearch(e.target.value)}
+        onChange={(e) => handleSearch(e.target.value)}
         className="max-w-sm"
       />
 
-      <div className={`rounded-md border transition-opacity duration-150 ${isFetching && !isLoading ? 'opacity-60' : 'opacity-100'}`}>
+      <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -134,14 +161,14 @@ export function ClientAnalysisTable() {
                   ))}
                 </TableRow>
               ))
-            ) : rows.length === 0 ? (
+            ) : pageRows.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={COLUMNS.length} className="text-center py-8 text-muted-foreground">
                   No clients found
                 </TableCell>
               </TableRow>
             ) : (
-              rows.map((row) => {
+              pageRows.map((row) => {
                 const plan = PLAN_BADGE[row.planType] ?? {
                   label: row.planType,
                   className: 'bg-gray-100 text-gray-700',
@@ -171,28 +198,30 @@ export function ClientAnalysisTable() {
       </div>
 
       <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <span>{totalCount.toLocaleString()} clients total</span>
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage((p) => p - 1)}
-            disabled={page <= 1 || isLoading}
-          >
-            Previous
-          </Button>
-          <span>
-            Page {page} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage((p) => p + 1)}
-            disabled={page >= totalPages || isLoading}
-          >
-            Next
-          </Button>
-        </div>
+        <span>{sorted.length.toLocaleString()} clients{search ? ' (filtered)' : ' total'}</span>
+        {totalPages > 1 && (
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => p - 1)}
+              disabled={safePage <= 1}
+            >
+              Previous
+            </Button>
+            <span>
+              Page {safePage} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => p + 1)}
+              disabled={safePage >= totalPages}
+            >
+              Next
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

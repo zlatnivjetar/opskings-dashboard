@@ -182,10 +182,9 @@ export async function getOverdueTickets(
 }
 
 // Combined action — fires stats + overdue in parallel, one HTTP round-trip.
+// Fetches ALL overdue rows so the client can paginate instantly.
 export async function getResponseTimeAll(
   filters: FilterState,
-  page: number = 1,
-  pageSize: number = 20,
 ): Promise<ResponseTimeAll> {
   const ctx = await getUserContext();
   const p = toRTParams(filters);
@@ -224,12 +223,10 @@ export async function getResponseTimeAll(
         ${ctx.teamMemberId ? String(ctx.teamMemberId) : ''},
         ${p.dateFrom}::timestamptz, ${p.dateTo}::timestamptz,
         ${p.assignedInclude}::int[], ${p.assignedExclude}::int[],
-        ${page}, ${pageSize}
+        ${1}, ${10000}
       )
     `),
   ]);
-
-  const totalCount = overdueRows.length > 0 ? Number(overdueRows[0].full_count) : 0;
 
   return {
     stats: statsRows.map((r) => ({
@@ -251,8 +248,8 @@ export async function getResponseTimeAll(
         expectedHours: Number(r.expected_hours),
         excessHours: Number(r.excess_hours),
       })),
-      totalCount,
-      totalPages: Math.max(1, Math.ceil(totalCount / pageSize)),
+      totalCount: overdueRows.length,
+      totalPages: 1,
     },
   };
 }

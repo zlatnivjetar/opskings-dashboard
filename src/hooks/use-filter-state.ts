@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useSearchParams, usePathname } from 'next/navigation';
 import type { FilterState, DateFilter, MultiFilter } from '@/types/filters';
 
@@ -92,7 +92,10 @@ export function useFilterState() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const filters = parseFilters(searchParams);
+  // Stabilise reference — parseFilters creates a new object every render,
+  // which breaks useEffect deps and TanStack Query key comparisons.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const filters = useMemo(() => parseFilters(searchParams), [searchParams.toString()]);
 
   // Use native history API — Next.js intercepts replaceState and updates
   // useSearchParams() without triggering an RSC soft-navigation refetch.

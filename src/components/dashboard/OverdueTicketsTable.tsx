@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import {
   Table,
   TableBody,
@@ -24,34 +25,28 @@ function fmt(hours: number): string {
   return hours >= 1 ? `${hours.toFixed(1)}h` : `${Math.round(hours * 60)}m`;
 }
 
+const PAGE_SIZE = 20;
+
 interface OverdueTicketsTableProps {
   rows: OverdueTicketRow[];
-  totalCount: number;
-  totalPages: number;
-  page: number;
-  onPageChange: (page: number) => void;
   isLoading: boolean;
-  isFetching: boolean;
 }
 
 export function OverdueTicketsTable({
   rows,
-  totalCount,
-  totalPages,
-  page,
-  onPageChange,
   isLoading,
-  isFetching,
 }: OverdueTicketsTableProps) {
   const COLS = 8;
+  const [page, setPage] = useState(1);
+
+  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  // Clamp page if rows shrink (e.g. filter change)
+  const safePage = Math.min(page, totalPages);
+  const pageRows = rows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   return (
     <div className="space-y-3">
-      <div
-        className={`rounded-md border transition-opacity duration-150 ${
-          isFetching && !isLoading ? 'opacity-60' : 'opacity-100'
-        }`}
-      >
+      <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -76,14 +71,14 @@ export function OverdueTicketsTable({
                   ))}
                 </TableRow>
               ))
-            ) : rows.length === 0 ? (
+            ) : pageRows.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={COLS} className="text-center py-8 text-muted-foreground">
                   No overdue tickets found
                 </TableCell>
               </TableRow>
             ) : (
-              rows.map((row) => (
+              pageRows.map((row) => (
                 <TableRow key={row.ticketId}>
                   <TableCell className="font-mono text-sm text-muted-foreground">
                     #{row.ticketId}
@@ -117,30 +112,32 @@ export function OverdueTicketsTable({
         </Table>
       </div>
 
-      <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <span>{totalCount.toLocaleString()} overdue tickets</span>
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onPageChange(page - 1)}
-            disabled={page <= 1 || isLoading}
-          >
-            Previous
-          </Button>
-          <span>
-            Page {page} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onPageChange(page + 1)}
-            disabled={page >= totalPages || isLoading}
-          >
-            Next
-          </Button>
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <span>{rows.length.toLocaleString()} overdue tickets</span>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => p - 1)}
+              disabled={safePage <= 1}
+            >
+              Previous
+            </Button>
+            <span>
+              Page {safePage} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => p + 1)}
+              disabled={safePage >= totalPages}
+            >
+              Next
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
