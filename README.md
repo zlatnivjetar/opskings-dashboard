@@ -2,7 +2,7 @@
 
 A full-stack support analytics dashboard built for the OpsKings development interview. Processes ~40,000 tickets across 50 clients and 15 team members with role-based access control, real-time filtering, and optimized query performance.
 
-> **[Live Demo](<!-- REPLACE: your Vercel URL -->)** · **[Video Walkthrough](<!-- REPLACE: your Loom URL -->)**
+> **[Live Demo](https://opskings-dashboard.vercel.app/)** · **[Video Walkthrough](https://www.loom.com/share/7873fd2b145b49c2af9ae33534d51841)**
 
 <img src="docs/screenshots/dashboard-overview.webp" height="360" />
 
@@ -242,7 +242,7 @@ The current dataset (40k tickets) does not require materialized views — all qu
 
 ## Performance Results
 
-Measured with a benchmark script (`scripts/benchmark.ts`), 3-run average. Timings include network round-trip to Supabase (observed ~100–150 ms from Europe to `eu-central-1`; results will vary by region).
+Measured with a benchmark script (3-run average). Timings include network round-trip to Supabase (observed ~100–150 ms from Europe to `eu-central-1`; results will vary by region).
 
 ### Server Action Performance
 
@@ -320,8 +320,6 @@ The current setup handles 40k tickets well within all performance targets. Key f
 
 ## Screenshots
 
-<!-- REPLACE: Add your screenshots here after taking them -->
-
 | View | Screenshot |
 |------|-----------|
 | Sign In | <img src="docs/screenshots/sign-in.webp" height="180" /> |
@@ -345,7 +343,7 @@ The current setup handles 40k tickets well within all performance targets. Key f
 ### 1. Clone and Install
 
 ```bash
-git clone https://github.com/<!-- REPLACE: your-username -->/opskings-dashboard.git
+git clone https://github.com/zlatnivjetar/opskings-dashboard.git
 cd opskings-dashboard
 npm install
 ```
@@ -474,8 +472,7 @@ database/
 └── rls-functions.sql        # Stored functions (dashboard aggregates)
 
 scripts/
-├── seed-auth-users.ts       # Create demo BetterAuth users
-└── benchmark.ts             # Performance benchmark suite
+└── seed-auth-users.ts       # Create demo BetterAuth users
 ```
 
 ---
