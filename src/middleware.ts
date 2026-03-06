@@ -5,8 +5,20 @@ const PUBLIC_PATHS = ['/sign-in', '/sign-up', '/api/auth'];
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Always allow public/auth paths
+  // Always allow public/auth paths — but redirect already-authenticated
+  // users away from sign-in/sign-up to their home page.
   if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
+    if (pathname === '/sign-in' || pathname === '/sign-up') {
+      const res = await fetch(new URL('/api/auth/get-session', request.url), {
+        headers: { cookie: request.headers.get('cookie') ?? '' },
+      }).catch(() => null);
+      const session: { user?: { role?: string } } | null = res?.ok ? await res.json() : null;
+      if (session?.user) {
+        return NextResponse.redirect(
+          new URL(session.user.role === 'team_member' ? '/dashboard' : '/portal', request.url),
+        );
+      }
+    }
     return NextResponse.next();
   }
 
