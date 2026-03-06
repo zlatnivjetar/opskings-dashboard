@@ -33,6 +33,13 @@ export async function middleware(request: NextRequest) {
 
   const { role } = session.user;
 
+  // Redirect root to role home
+  if (pathname === '/') {
+    return NextResponse.redirect(
+      new URL(role === 'team_member' ? '/dashboard' : '/portal', request.url),
+    );
+  }
+
   if (role === 'team_member' && pathname.startsWith('/portal')) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
