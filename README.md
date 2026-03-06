@@ -4,7 +4,7 @@ A full-stack support analytics dashboard built for the OpsKings development inte
 
 > **[Live Demo](<!-- REPLACE: your Vercel URL -->)** · **[Video Walkthrough](<!-- REPLACE: your Loom URL -->)**
 
-![Dashboard Overview](docs/screenshots/dashboard-overview.webp)
+<img src="docs/screenshots/dashboard-overview.webp" height="360" />
 
 ---
 
@@ -299,14 +299,14 @@ The current setup handles 40k tickets well within all performance targets. Key f
 
 | View | Screenshot |
 |------|-----------|
-| Sign In | <img src="docs/screenshots/sign-in.webp" height="360" /> |
-| Dashboard Overview | <img src="docs/screenshots/dashboard-overview.webp" height="360" /> |
-| Team Performance | <img src="docs/screenshots/team-performance.webp" height="360" /> |
-| Ticket Distribution | <img src="docs/screenshots/distribution.webp" height="360" /> |
-| Client Analysis | <img src="docs/screenshots/client-analysis.webp" height="360" /> |
-| Response Time Analysis | <img src="docs/screenshots/response-time.webp" height="360" /> |
-| Client Portal | <img src="docs/screenshots/portal-tickets.webp" height="360" /> |
-| Ticket Detail + Feedback | <img src="docs/screenshots/ticket-detail.webp" height="360" /> |
+| Sign In | <img src="docs/screenshots/sign-in.webp" height="180" /> |
+| Dashboard Overview | <img src="docs/screenshots/dashboard-overview.webp" height="180" /> |
+| Team Performance | <img src="docs/screenshots/team-performance.webp" height="180" /> |
+| Ticket Distribution | <img src="docs/screenshots/distribution.webp" height="180" /> |
+| Client Analysis | <img src="docs/screenshots/client-analysis.webp" height="180" /> |
+| Response Time Analysis | <img src="docs/screenshots/response-time.webp" height="180" /> |
+| Client Portal | <img src="docs/screenshots/portal-tickets.webp" height="180" /> |
+| Ticket Detail + Feedback | <img src="docs/screenshots/ticket-detail.webp" height="180" /> |
 
 ---
 
