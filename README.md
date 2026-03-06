@@ -299,14 +299,14 @@ The current setup handles 40k tickets well within all performance targets. Key f
 
 | View | Screenshot |
 |------|-----------|
-| Sign In | ![Sign In](docs/screenshots/sign-in.webp) |
-| Dashboard Overview | ![Dashboard](docs/screenshots/dashboard-overview.webp) |
-| Team Performance | ![Team](docs/screenshots/team-performance.webp) |
-| Ticket Distribution | ![Distribution](docs/screenshots/distribution.webp) |
-| Client Analysis | ![Clients](docs/screenshots/client-analysis.webp) |
-| Response Time Analysis | ![Response Time](docs/screenshots/response-time.webp) |
-| Client Portal | ![Portal](docs/screenshots/portal-tickets.webp) |
-| Ticket Detail + Feedback | ![Detail](docs/screenshots/ticket-detail.webp) |
+| Sign In | <img src="docs/screenshots/sign-in.webp" height="360" /> |
+| Dashboard Overview | <img src="docs/screenshots/dashboard-overview.webp" height="360" /> |
+| Team Performance | <img src="docs/screenshots/team-performance.webp" height="360" /> |
+| Ticket Distribution | <img src="docs/screenshots/distribution.webp" height="360" /> |
+| Client Analysis | <img src="docs/screenshots/client-analysis.webp" height="360" /> |
+| Response Time Analysis | <img src="docs/screenshots/response-time.webp" height="360" /> |
+| Client Portal | <img src="docs/screenshots/portal-tickets.webp" height="360" /> |
+| Ticket Detail + Feedback | <img src="docs/screenshots/ticket-detail.webp" height="360" /> |
 
 ---
 
