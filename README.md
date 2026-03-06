@@ -14,6 +14,7 @@ A full-stack support analytics dashboard built for the OpsKings development inte
 - [Tech Stack](#tech-stack)
 - [Architecture](#architecture)
 - [RLS Implementation](#rls-implementation)
+- [Security Considerations](#security-considerations)
 - [Database Optimization](#database-optimization)
 - [Performance Results](#performance-results)
 - [Scaling Strategy](#scaling-strategy)
@@ -96,9 +97,10 @@ Server Actions
       └─ adminDb.execute() — single round-trip
 
 PostgreSQL (Supabase)
-  ├─ RLS policies on all 7 tables
+  ├─ RLS policies on all 7 tables (database/rls-setup.sql)
   ├─ rls_user role (NOLOGIN, NOBYPASSRLS)
-  ├─ 6 stored functions with built-in RLS
+  ├─ 4 session-var helper functions (get_app_user_role, etc.)
+  ├─ 6 stored functions with built-in RLS (database/rls-functions.sql)
   └─ 7 composite indexes
 ```
 
@@ -111,6 +113,8 @@ A single database connection (`adminDb`) serves both admin and RLS-enforced quer
 - **Stored functions** — Dashboard aggregates use PostgreSQL functions that encapsulate the `SET LOCAL ROLE` + `set_config` + query in a single database round-trip, called via `adminDb.execute()`.
 
 This avoids maintaining two separate connection pools while guaranteeing RLS is always enforced for user data.
+
+> **Driver note:** Drizzle ORM is configured with the `postgres.js` driver (`drizzle(postgresClient)`). Because Supabase's Transaction Pooler runs pgBouncer in transaction mode, all postgres.js clients use `prepare: false` to disable prepared statements (pgBouncer cannot track them across pooled connections).
 
 ### Data Fetching Optimization
 
@@ -141,7 +145,18 @@ BetterAuth handles authentication at the application layer (session cookies with
 
 **Why `SET LOCAL ROLE` instead of a separate connection?** A dedicated `rls_user` connection would bypass BetterAuth entirely and require managing a second connection pool. `SET LOCAL ROLE` within a transaction gives us RLS enforcement with zero additional infrastructure — the role automatically resets when the transaction ends.
 
-**Anti-spoofing:** The `messages_insert` policy verifies that team member inserts include the correct `from_team_member_id` from the session, and client inserts must have `from_team_member_id IS NULL`. Users cannot impersonate other users at the database level.
+**Anti-spoofing:** The `messages_insert` policy enforces attribution at the database level:
+
+```sql
+-- Team members must use their own ID (cannot impersonate another agent)
+get_app_user_role() = 'team_member'
+  AND from_team_member_id = NULLIF(get_app_team_member_id(), '')::INT
+
+-- Clients cannot claim to be a team member
+get_app_user_role() = 'client'
+  AND from_team_member_id IS NULL
+  AND ticket_id IN (SELECT id FROM tickets WHERE client_id = ...)
+```
 
 ### Access Matrix
 
@@ -174,6 +189,16 @@ export async function withRLS<T>(ctx: UserContext, fn: (tx) => Promise<T>): Prom
 }
 ```
 
+### Security Considerations
+
+| Threat | Mitigation |
+|--------|-----------|
+| **Horizontal data access** (client A reads client B's data) | RLS policies filter all 7 tables by `get_app_client_id()`. Enforced at the database level — application bugs cannot leak cross-client data. |
+| **Identity spoofing** (client impersonates a team member) | `messages_insert` policy requires `from_team_member_id = get_app_team_member_id()` for team members and `IS NULL` for clients. `clientId`/`teamMemberId` are derived from the server-side session, never from user input. |
+| **Privilege escalation** (client accesses dashboard) | Middleware redirects clients to `/portal`; dashboard layouts call `getUserContext()` and redirect non-team-members. Even if bypassed, RLS limits query results to the client's own data. |
+| **SQL injection** | All queries use Drizzle's `sql` tagged template (parameterized) or Drizzle ORM query builder. No string concatenation in queries. Stored functions use `$1`-style parameters. |
+| **Heavy filter abuse** | Composite indexes cover all filter combinations. Pagination is enforced server-side (`LIMIT`/`OFFSET`). No unbounded result sets. |
+
 ---
 
 ## Database Optimization
@@ -194,7 +219,7 @@ Every index targets specific query patterns identified during development:
 
 ### Stored Functions
 
-Six PostgreSQL functions encapsulate complex aggregations. Each function sets RLS context internally and executes in a single database round-trip:
+Six PostgreSQL functions encapsulate complex aggregations. All use the default `SECURITY INVOKER` mode — they run under the caller's role, which is `rls_user` after the `SET LOCAL ROLE` issued at the top of each function body. This means RLS policies are fully enforced inside the function; there is no `SECURITY DEFINER` escalation. Each function sets RLS context and executes in a single database round-trip:
 
 | Function | Purpose |
 |----------|---------|
@@ -217,7 +242,7 @@ The current dataset (40k tickets) does not require materialized views — all qu
 
 ## Performance Results
 
-Measured with a benchmark script (`scripts/benchmark.ts`), 3-run average, including network round-trip (~100-150 ms baseline latency to Supabase).
+Measured with a benchmark script (`scripts/benchmark.ts`), 3-run average. Timings include network round-trip to Supabase (observed ~100–150 ms from Europe to `eu-central-1`; results will vary by region).
 
 ### Server Action Performance
 
@@ -236,7 +261,7 @@ Measured with a benchmark script (`scripts/benchmark.ts`), 3-run average, includ
 
 ### End-to-End Production Performance
 
-Full round-trip times measured via Chrome DevTools Network tab on the deployed Vercel instance. These include browser→Vercel serverless (~100-150 ms) + Vercel→Supabase (~100-150 ms) network latency — roughly 150-200 ms overhead on top of raw query time.
+Full round-trip times measured via Chrome DevTools Network tab on the deployed Vercel instance (Vercel region: auto, Supabase: `eu-central-1`). These include browser→Vercel + Vercel→Supabase latency.
 
 | Page | Load Time | Notes |
 |------|-----------|-------|
@@ -255,7 +280,7 @@ Full round-trip times measured via Chrome DevTools Network tab on the deployed V
 
 ### Optimization: Sequential-to-Parallel Fix
 
-Three pages originally fired two sequential server action calls (Next.js serializes concurrent calls per page). Combining them with `Promise.all` saved one full round-trip per page. Additionally, middleware session checks were bypassed for server action requests (they verify auth internally via `getUserContext()`), and FilterBar's two reference data calls were merged into one.
+Three pages originally fired two sequential server action calls (Next.js serializes concurrent calls per page). Combining them with `Promise.all` saved one full round-trip per page. Server actions independently validate auth via `getUserContext()`, so middleware only handles page-level routing redirects — it does not intercept server action requests. FilterBar's two reference data calls were also merged into one.
 
 ---
 
@@ -327,35 +352,23 @@ npm install
 
 ### 2. Set Up Supabase Database
 
-In the Supabase SQL Editor, run these files in order:
+In the Supabase SQL Editor, run these files **in order**:
 
 ```sql
 -- 1. Create tables and seed data
 -- Run contents of: database/schema.sql
 -- Run contents of: database/seed.sql
 
--- 2. Create the rls_user role, enable RLS policies, and deploy stored functions
+-- 2. Create rls_user role, helper functions, enable RLS, and create policies
+-- Run contents of: database/rls-setup.sql
+
+-- 3. Deploy stored functions used by server actions
 -- Run contents of: database/rls-functions.sql
 ```
 
-### 3. Create the `rls_user` Role
+All scripts are idempotent — safe to re-run.
 
-In the Supabase SQL Editor:
-
-```sql
--- Create the RLS-enforced role (no direct login, no RLS bypass)
-CREATE ROLE rls_user NOLOGIN NOBYPASSRLS;
-
--- Allow the superuser to assume this role in transactions
-GRANT rls_user TO postgres;
-
--- Grant table access to rls_user
-GRANT USAGE ON SCHEMA public TO rls_user;
-GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO rls_user;
-GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO rls_user;
-```
-
-### 4. Configure Environment Variables
+### 3. Configure Environment
 
 ```bash
 cp .env.example .env.local
@@ -363,7 +376,7 @@ cp .env.example .env.local
 
 Edit `.env.local` with your Supabase credentials (see [Environment Variables](#environment-variables)).
 
-### 5. Seed Auth Users
+### 4. Seed Auth Users
 
 ```bash
 npm run seed:auth
@@ -378,7 +391,7 @@ This creates 4 demo users (idempotent — safe to re-run):
 | admin@techstart.com | password123 | Client (TechStart) |
 | contact@growthco.io | password123 | Client (GrowthCo) |
 
-### 6. Start Development Server
+### 5. Start Development Server
 
 ```bash
 npm run dev
@@ -410,6 +423,7 @@ Create a `.env.local` file from the provided `.env.example` template:
 - **40k ticket dataset** — The provided seed data was used as-is. Performance was optimized and tested against this dataset, with a scaling strategy documented for 100k+ growth.
 - **No email verification** — BetterAuth is configured for email/password without email verification flow, appropriate for an interview demo.
 - **Client portal is read-heavy** — Clients can create tickets and leave feedback, but cannot update ticket status or reassign tickets. This matches the spec's scope.
+- **Database-only Supabase** — The app uses Supabase purely as a PostgreSQL host. There are no dependencies on the Supabase client SDK, Supabase Auth, Realtime, or Storage. Auth is handled by BetterAuth, and the ORM layer is Drizzle with the `postgres.js` driver. Migrating to any PostgreSQL provider (Neon, Railway, AWS RDS, etc.) requires only changing `DATABASE_URL`.
 
 ---
 
@@ -456,7 +470,8 @@ src/
 database/
 ├── schema.sql               # Table definitions
 ├── seed.sql                 # 40k tickets, 50 clients, 15 team members
-└── rls-functions.sql         # RLS policies + stored functions
+├── rls-setup.sql            # RLS role, helper functions, and policies
+└── rls-functions.sql        # Stored functions (dashboard aggregates)
 
 scripts/
 ├── seed-auth-users.ts       # Create demo BetterAuth users
