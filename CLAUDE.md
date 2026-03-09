@@ -21,7 +21,7 @@
 Full plan: `docs/ui-overhaul-plan.md` — do NOT deviate from phase order without updating the plan.
 
 - [x] Phase 1 — Theme Infrastructure + Typography + Density
-- [ ] Phase 2 — Sidebar Redesign
+- [x] Phase 2 — Sidebar Redesign
 - [ ] Phase 3 — Filter Bar Redesign
 - [ ] Phase 8 — Badges + Status Colors (done early, quick wins)
 - [ ] Phase 4 — KPI Cards + Comparison Backend
@@ -143,6 +143,10 @@ Examples of good entries:
 - `src/lib/status-styles.ts` — `PRIORITY_STYLES`, `STATUS_STYLES`, `PLAN_STYLES` record maps
 - Button base CVA no longer has `mt-4 mb-1` — buttons render inline without margin
 
+- `SidebarNav` is a client component — never pass Lucide icon components (or any object with methods) as props from `Sidebar.tsx` (server); nav category definitions with icons live entirely in `SidebarNav.tsx`, server passes only `role: string`
+- `ThemeToggle` requires a `mounted` state guard before rendering the icon — `resolvedTheme` is `undefined` on the server, causing hydration mismatch without it
+- `SignOutButton` is now `variant="ghost"` with muted text — no longer destructive
+
 _(append here after each phase)_
 
 ## Completion Protocol
@@ -150,7 +154,7 @@ _(append here after each phase)_
 When I type exactly **COMPLETED**, do the following:
 1. Check off the just-completed phase in the UI Overhaul Phases list
 2. Append any Key Decisions from this phase under "UI Overhaul constraints" (only non-obvious things that affect future phases)
-3. Write a brief implementation summary to `docs/implementation-log.md` (append, don't overwrite)
+3. Write a short implementation summary to `docs/implementation-log.md` (append, don't overwrite) — 3-4 sentences max: what changed, what files were touched, any gotchas
 4. Commit and push to GitHub with a concise message (e.g., "feat: ui overhaul phase 1 — theme + typography")
 
 Do NOT update CLAUDE.md or the implementation log at any other time.

@@ -1,5 +1,9 @@
 # Implementation Log
 
+## UI Overhaul Phase 2: Sidebar Redesign
+
+Rewrote `Sidebar.tsx` with a Crown logo, `ThemeToggle` in the header, and a user profile section (initials avatar, name, role label, email, sign-out). Rewrote `SidebarNav.tsx` to accept categorized nav with Lucide icons and a `border-l-2` active indicator using sidebar tokens. Created `ThemeToggle.tsx` (Sun/Moon swap via `useTheme`); required a `mounted` state guard to prevent hydration mismatch since `resolvedTheme` is undefined on the server. Lucide icon components can't cross the RSC→client boundary as props — nav categories with icons were moved entirely into `SidebarNav.tsx`, with the server passing only `role: string`.
+
 ## UI Overhaul Phase 1: Theme Infrastructure + Typography + Density
 
 Installed `next-themes` and wired `ThemeProvider` into `src/app/providers.tsx` (wrapping `QueryClientProvider`, `defaultTheme="dark"`, `attribute="class"`). Added `suppressHydrationWarning` to `<html>` in `layout.tsx`. Replaced the entire `:root` and `.dark` blocks in `globals.css` with the branded design-token palette from `design-tokens.css` — introduces semantic status tokens (`success`, `warning`, `info` + foregrounds) and a sixth chart color (`chart-6`); added all 7 new entries to the `@theme inline` block so Tailwind utility classes resolve correctly. Added `@layer utilities` block with 6 typography utility classes (`.text-page-title`, `.text-section-title`, `.text-card-label`, `.text-card-value`, `.text-table`, `.text-caption`). Removed errant `mt-4 mb-1` from `button.tsx` base CVA string. Created 3 shared utility files needed by future phases: `src/hooks/use-chart-theme.ts` (hex color map per resolved theme for Recharts), `src/lib/format.ts` (`formatCompact`, `formatHours`, `formatPercent`), `src/lib/status-styles.ts` (`PRIORITY_STYLES`, `STATUS_STYLES`, `PLAN_STYLES`). `tsc --noEmit` passes clean.
