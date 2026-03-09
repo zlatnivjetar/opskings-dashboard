@@ -1,6 +1,6 @@
-# Current Milestone: COMPLETE
+# Current Work: UI Overhaul
 
-## Completed
+## Original Milestones (all complete)
 
 - [x] Milestone 0: Project Setup
 - [x] Milestone 1: Drizzle Schema + Database Indexes
@@ -15,6 +15,23 @@
 - [x] Milestone 10: Client Portal
 - [x] Milestone 11: Performance Optimization + Testing
 - [x] Milestone 12: Deploy + Documentation
+
+## UI Overhaul Phases
+
+Full plan: `docs/ui-overhaul-plan.md` — do NOT deviate from phase order without updating the plan.
+
+- [ ] Phase 1 — Theme Infrastructure + Typography + Density
+- [ ] Phase 2 — Sidebar Redesign
+- [ ] Phase 3 — Filter Bar Redesign
+- [ ] Phase 8 — Badges + Status Colors (done early, quick wins)
+- [ ] Phase 4 — KPI Cards + Comparison Backend
+- [ ] Phase 6 — Dashboard Page Layout
+- [ ] Phase 5 — Chart Upgrades
+- [ ] Phase 7 — Response Time Page Overhaul
+- [ ] Phase 10 — Portal & Auth Polish
+- [ ] Phase 9 — Motion Polish
+- [ ] Phase 11 — Distribution Page Removal + Cleanup
+- [ ] Phase 12 — Visual Regression Baselines
 
 ## Key Decisions (READ BEFORE EVERY MILESTONE)
 
@@ -110,16 +127,23 @@ Examples of good entries:
 - `.env.example` committed to repo (`.gitignore` has `!.env.example` exception) — contains placeholder values for `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`
 - README.md is the polished interview-facing document — includes architecture diagram, RLS explanation, performance tables, scaling strategy, setup instructions, and screenshot/video placeholders
 
-_(append here after each milestone)_
+### UI Overhaul constraints (READ before any UI phase)
+
+- `useFilterState()` hook and URL serialization are UNTOUCHED during the UI overhaul — only the rendering layer of filter components changes
+- Do NOT add `'use client'` to components currently server-rendered — follow the existing server/client split (server component fetches session/data, passes to client component)
+- Recharts SVG fill/stroke does NOT support CSS `oklch()` — use the `useChartTheme()` hook (hex values per resolved theme) for all chart colors; never pass `var(--...)` directly to Recharts props
+- Recharts tooltip `contentStyle.background` must be a literal hex or computed inline style — CSS variables don't resolve in Recharts' out-of-tree tooltip DOM
+- New shared utilities: `src/lib/format.ts` (number/date formatting), `src/lib/status-styles.ts` (badge classes), `src/hooks/use-chart-theme.ts` (theme-aware chart colors)
+
+_(append here after each phase)_
 
 ## Completion Protocol
 
 When I type exactly **COMPLETED**, do the following:
-1. Increment "Current Milestone" number to the next milestone
-2. Check off the just-completed milestone in the Completed list
-3. Append any Key Decisions from this milestone (only non-obvious ones that affect future work)
-4. Write a brief implementation summary to `docs/implementation-log.md` (append, don't overwrite)
-5. Commit and push to GitHub with a concise message (e.g., "feat: complete Milestone X")
+1. Check off the just-completed phase in the UI Overhaul Phases list
+2. Append any Key Decisions from this phase under "UI Overhaul constraints" (only non-obvious things that affect future phases)
+3. Write a brief implementation summary to `docs/implementation-log.md` (append, don't overwrite)
+4. Commit and push to GitHub with a concise message (e.g., "feat: ui overhaul phase 1 — theme + typography")
 
 Do NOT update CLAUDE.md or the implementation log at any other time.
 Do NOT treat partial phrases like "that's completed" or "I completed it" as the trigger.
