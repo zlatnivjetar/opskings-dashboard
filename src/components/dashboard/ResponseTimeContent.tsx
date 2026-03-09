@@ -13,10 +13,12 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { FilterBar } from '@/components/filters/FilterBar';
+import { KpiCard } from '@/components/dashboard/KpiCard';
 import { ResolutionComparisonChart } from '@/components/charts/ResolutionComparisonChart';
 import { OverdueTicketsTable } from '@/components/dashboard/OverdueTicketsTable';
 import { useFilterState } from '@/hooks/use-filter-state';
-import { getResolutionTimeStats, getOverdueTickets } from '@/lib/queries/response-time';
+import { getResponseTimeAll } from '@/lib/queries/response-time';
+import { formatCompact, formatHours } from '@/lib/format';
 
 const RT_FILTERS = ['date', 'teamMember'] as const;
 
@@ -49,32 +51,69 @@ const PRIORITY_ORDER = ['low', 'medium', 'high', 'urgent'];
 function Inner() {
   const { filters } = useFilterState();
 
-  // Two separate queries — stats loads fast (~300ms), charts render immediately.
-  // Overdue tickets (larger payload) loads after, table fills in progressively.
-  const { data: stats, isLoading: statsLoading } = useQuery({
-    queryKey: ['response-time', 'stats', filters],
-    queryFn: () => getResolutionTimeStats(filters),
+  const { data, isLoading } = useQuery({
+    queryKey: ['response-time', 'all', filters],
+    queryFn: () => getResponseTimeAll(filters),
     staleTime: 30_000,
   });
 
-  const { data: overdueData, isLoading: overdueLoading } = useQuery({
-    queryKey: ['response-time', 'overdue', filters],
-    queryFn: () => getOverdueTickets(filters, { page: 1, pageSize: 10000 }),
-    staleTime: 30_000,
-  });
-
-  const sorted = [...(stats ?? [])].sort(
+  const sorted = [...(data?.stats ?? [])].sort(
     (a, b) => PRIORITY_ORDER.indexOf(a.priority) - PRIORITY_ORDER.indexOf(b.priority),
   );
+
+  const { summary, overdue } = data ?? {};
+  const overduePct =
+    summary && summary.resolvedCount > 0 && overdue
+      ? `${((overdue.totalCount / summary.resolvedCount) * 100).toFixed(1)}% of resolved`
+      : undefined;
 
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold mb-4">Response Time Analysis</h1>
+        <h1 className="text-page-title mb-4">Response Time Analysis</h1>
         <Suspense>
           <FilterBar allowedFilters={[...RT_FILTERS]} />
         </Suspense>
       </div>
+
+      {/* ── KPI Cards ── */}
+      {isLoading ? (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i} className="p-4">
+              <Skeleton className="h-3 w-24 mb-2" />
+              <Skeleton className="h-8 w-20 mb-2" />
+              <Skeleton className="h-3 w-28" />
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <KpiCard
+            label="RESOLVED TICKETS"
+            value={summary ? formatCompact(summary.resolvedCount) : '—'}
+            subtitle="In selected period"
+          />
+          <KpiCard
+            label="MEDIAN RESOLUTION"
+            value={summary?.medianHours != null ? formatHours(summary.medianHours) : '—'}
+            subtitle="50th percentile"
+            positiveIsGood={false}
+          />
+          <KpiCard
+            label="AVG RESOLUTION TIME"
+            value={summary?.avgHours != null ? formatHours(summary.avgHours) : '—'}
+            subtitle="Resolved tickets only"
+            positiveIsGood={false}
+          />
+          <KpiCard
+            label="OVERDUE TICKETS"
+            value={overdue ? formatCompact(overdue.totalCount) : '—'}
+            subtitle={overduePct}
+            positiveIsGood={false}
+          />
+        </div>
+      )}
 
       {/* ── Summary Stats Table ── */}
       <Card>
@@ -82,7 +121,7 @@ function Inner() {
           <CardTitle>Resolution Time by Priority</CardTitle>
         </CardHeader>
         <CardContent>
-          {statsLoading ? (
+          {isLoading ? (
             <Skeleton className="h-[180px] w-full" />
           ) : (
             <Table>
@@ -141,7 +180,7 @@ function Inner() {
           <CardTitle>Actual vs Expected Resolution Time</CardTitle>
         </CardHeader>
         <CardContent>
-          {statsLoading ? (
+          {isLoading ? (
             <Skeleton className="h-[280px] w-full" />
           ) : (
             <ResolutionComparisonChart data={sorted} />
@@ -156,8 +195,8 @@ function Inner() {
         </CardHeader>
         <CardContent>
           <OverdueTicketsTable
-            rows={overdueData?.rows ?? []}
-            isLoading={overdueLoading}
+            rows={data?.overdue.rows ?? []}
+            isLoading={isLoading}
           />
         </CardContent>
       </Card>

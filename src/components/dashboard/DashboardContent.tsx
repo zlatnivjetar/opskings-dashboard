@@ -5,104 +5,104 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FilterBar } from '@/components/filters/FilterBar';
+import { KpiCard } from '@/components/dashboard/KpiCard';
 import { TicketsOverTimeChart } from '@/components/charts/TicketsOverTimeChart';
 import { useFilterState } from '@/hooks/use-filter-state';
-import { getDashboardAll } from '@/lib/queries/dashboard';
+import { getDashboardAllWithComparison } from '@/lib/queries/dashboard';
+import { formatCompact, formatHours } from '@/lib/format';
 import type { DashboardSummary, TicketsOverTimeRow } from '@/lib/queries/dashboard';
 
-function SummaryCardsSkeleton() {
+function computeTrend(
+  current: number,
+  previous: number | undefined | null,
+): { value: number; label: string } | undefined {
+  if (previous == null || previous === 0) return undefined;
+  return {
+    value: ((current - previous) / previous) * 100,
+    label: 'vs prev period',
+  };
+}
+
+function KpiCardsSkeleton() {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {Array.from({ length: 4 }).map((_, i) => (
-        <Card key={i}>
-          <CardHeader className="pb-2">
-            <Skeleton className="h-4 w-28" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-8 w-24 mb-1" />
-            <Skeleton className="h-3 w-16" />
-          </CardContent>
+        <Card key={i} className="p-4">
+          <Skeleton className="h-3 w-24 mb-2" />
+          <Skeleton className="h-8 w-20 mb-2" />
+          <Skeleton className="h-3 w-28" />
         </Card>
       ))}
     </div>
   );
 }
 
-function SummaryCards({ data }: { data: DashboardSummary | undefined }) {
-  if (!data) return <SummaryCardsSkeleton />;
+function KpiCards({
+  summary,
+  previous,
+}: {
+  summary: DashboardSummary | undefined;
+  previous: DashboardSummary | null | undefined;
+}) {
+  if (!summary) return <KpiCardsSkeleton />;
 
   const openPct =
-    data.totalTickets > 0
-      ? ((data.openTickets / data.totalTickets) * 100).toFixed(1)
-      : '0.0';
+    summary.totalTickets > 0
+      ? `${((summary.openTickets / summary.totalTickets) * 100).toFixed(1)}% not resolved`
+      : '0% not resolved';
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">Total Tickets</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{data.totalTickets.toLocaleString('en-US')}</div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">Open Tickets</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{data.openTickets.toLocaleString('en-US')}</div>
-          <p className="text-xs text-muted-foreground mt-1">{openPct}% of total</p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            Avg Resolution Time
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">
-            {data.avgResolutionHours != null ? `${data.avgResolutionHours.toFixed(1)} hrs` : '—'}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            Customer Satisfaction
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">
-            {data.avgRating != null ? `${data.avgRating.toFixed(1)} / 5` : '—'}
-          </div>
-          {data.avgRating != null && (
-            <div className="flex gap-0.5 mt-1">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <span
-                  key={star}
-                  className={
-                    star <= Math.round(data.avgRating!)
-                      ? 'text-warning text-sm'
-                      : 'text-muted-foreground text-sm'
-                  }
-                >
-                  ★
-                </span>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <KpiCard
+        label="TOTAL TICKETS"
+        value={formatCompact(summary.totalTickets)}
+        subtitle="All tickets in period"
+        trend={computeTrend(summary.totalTickets, previous?.totalTickets)}
+      />
+      <KpiCard
+        label="OPEN TICKETS"
+        value={formatCompact(summary.openTickets)}
+        subtitle={openPct}
+        trend={computeTrend(summary.openTickets, previous?.openTickets)}
+        positiveIsGood={false}
+      />
+      <KpiCard
+        label="AVG RESOLUTION TIME"
+        value={summary.avgResolutionHours != null ? formatHours(summary.avgResolutionHours) : '—'}
+        subtitle="Resolved tickets only"
+        trend={
+          summary.avgResolutionHours != null && previous?.avgResolutionHours != null
+            ? computeTrend(summary.avgResolutionHours, previous.avgResolutionHours)
+            : undefined
+        }
+        positiveIsGood={false}
+      />
+      <KpiCard
+        label="CUSTOMER SATISFACTION"
+        value={summary.avgRating != null ? `${summary.avgRating.toFixed(1)} / 5` : '—'}
+        subtitle={
+          summary.avgRating != null
+            ? '★'.repeat(Math.round(summary.avgRating)) +
+              '☆'.repeat(5 - Math.round(summary.avgRating))
+            : undefined
+        }
+        trend={
+          summary.avgRating != null && previous?.avgRating != null
+            ? computeTrend(summary.avgRating, previous.avgRating)
+            : undefined
+        }
+      />
     </div>
   );
 }
 
-function TicketsChart({ data, isLoading }: { data: TicketsOverTimeRow[] | undefined; isLoading: boolean }) {
+function TicketsChart({
+  data,
+  isLoading,
+}: {
+  data: TicketsOverTimeRow[] | undefined;
+  isLoading: boolean;
+}) {
   if (isLoading) return <Skeleton className="h-[300px] w-full" />;
   return <TicketsOverTimeChart data={data ?? []} />;
 }
@@ -110,23 +110,22 @@ function TicketsChart({ data, isLoading }: { data: TicketsOverTimeRow[] | undefi
 function Inner() {
   const { filters } = useFilterState();
 
-  // Single request — both queries run in parallel on the server via Promise.all.
   const { data, isLoading } = useQuery({
-    queryKey: ['dashboard', 'all', filters],
-    queryFn: () => getDashboardAll(filters),
+    queryKey: ['dashboard', 'all-with-comparison', filters],
+    queryFn: () => getDashboardAllWithComparison(filters),
     staleTime: 30_000,
   });
 
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold mb-4">Dashboard</h1>
+        <h1 className="text-page-title mb-4">Dashboard</h1>
         <Suspense>
           <FilterBar />
         </Suspense>
       </div>
 
-      <SummaryCards data={data?.summary} />
+      <KpiCards summary={data?.summary} previous={data?.previousSummary} />
 
       <Card>
         <CardHeader>

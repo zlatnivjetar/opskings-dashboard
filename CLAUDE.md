@@ -24,7 +24,7 @@ Full plan: `docs/ui-overhaul-plan.md` — do NOT deviate from phase order withou
 - [x] Phase 2 — Sidebar Redesign
 - [x] Phase 3 — Filter Bar Redesign
 - [x] Phase 8 — Badges + Status Colors (done early, quick wins)
-- [ ] Phase 4 — KPI Cards + Comparison Backend
+- [x] Phase 4 — KPI Cards + Comparison Backend
 - [ ] Phase 6 — Dashboard Page Layout
 - [ ] Phase 5 — Chart Upgrades
 - [ ] Phase 7 — Response Time Page Overhaul
@@ -153,6 +153,11 @@ Examples of good entries:
 - `formatUsername(username)` in `src/lib/format.ts` — converts `snake_case` usernames to "Title Case" for display; applied in FilterBar, TeamPerformanceTable, portal ticket detail
 
 - `PRIORITY_STYLES`, `STATUS_STYLES`, `PLAN_STYLES` in `src/lib/status-styles.ts` are now the canonical source for badge colors — never create local inline style maps for these in any component; portal `StatusBadge`/`PriorityBadge` use `Badge variant="secondary"` + class override (not `variant="destructive"` or hardcoded bg-* classes)
+
+- `KpiCard` at `src/components/dashboard/KpiCard.tsx` — props: `label`, `value`, `subtitle?`, `trend?: { value: number; label: string }`, `positiveIsGood?: boolean` (default true); when false, a positive trend renders red and negative renders green (used for resolution time and active tickets)
+- `getDashboardAllWithComparison(filters)` in `src/lib/queries/dashboard.ts` — computes previous period via `computePreviousFilters` (shifts `range` by same duration, `exact` by 1 day; returns `null` for unbounded operators) then runs current + previous in parallel; returns `{ summary, ticketsOverTime, previousSummary: DashboardSummary | null }`
+- `ResponseTimeAll` now includes `summary: ResolutionSummaryStats` — added as a third parallel `withRLS` query inside `getResponseTimeAll`; computes resolved count, avg hours, and median hours via `PERCENTILE_CONT(0.5)` on `resolved_at - created_at`; `ResponseTimeContent` migrated to single `useQuery` calling `getResponseTimeAll`
+- `get_dashboard_summary_rls` `open_tickets` column now counts `status IN ('open', 'in_progress')` — previous count of `status = 'open'` only was 1.9k vs actual ~12.9k active tickets; KPI label changed to "OPEN TICKETS" (showing open+in_progress)
 
 _(append here after each phase)_
 

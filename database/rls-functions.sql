@@ -40,7 +40,7 @@ BEGIN
   RETURN QUERY
   SELECT
     COUNT(*)::INT,
-    COUNT(*) FILTER (WHERE t.status = 'open')::INT,
+    COUNT(*) FILTER (WHERE t.status IN ('open', 'in_progress'))::INT,
     (AVG(EXTRACT(EPOCH FROM (t.resolved_at - t.created_at)) / 3600.0)
       FILTER (WHERE t.resolved_at IS NOT NULL))::DOUBLE PRECISION,
     AVG(tf.rating::NUMERIC)::DOUBLE PRECISION

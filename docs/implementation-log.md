@@ -1,5 +1,11 @@
 # Implementation Log
 
+## UI Overhaul Phase 4: KPI Cards + Comparison Backend
+
+Created `KpiCard.tsx` — a reusable card with label, large formatted value, optional trend badge (▲/▼ with `text-success`/`text-destructive` coloring), and a `positiveIsGood` prop to invert color logic for metrics where lower is better. Added `getDashboardAllWithComparison()` to `dashboard.ts`, which shifts the current date range backward by its own duration to compute a previous period, then fires both periods in parallel; `DashboardContent` now renders 4 `KpiCard` components in a `grid-cols-2 lg:grid-cols-4` grid with period-over-period trend deltas. Extended `getResponseTimeAll` with a third parallel `withRLS` query computing overall resolved count, avg hours, and median hours (via `PERCENTILE_CONT`); `ResponseTimeContent` migrated from two separate `useQuery` calls to one and gained 4 KPI cards at the top. Fixed a long-standing bug where `get_dashboard_summary_rls` counted only `status = 'open'` (1.9k) instead of `open + in_progress` (12.9k) for the active tickets KPI — updated the function and redeployed to Supabase.
+
+
+
 ## UI Overhaul Phase 8: Badges + Status Colors
 
 Replaced all hardcoded Tailwind palette classes (`bg-red-100`, `text-green-600`, `bg-yellow-400`, `bg-blue-100`, etc.) with semantic design tokens throughout the app. `ClientAnalysisTable`, `OverdueTicketsTable`, and `TeamPerformanceTable` now import `PLAN_STYLES`, `PRIORITY_STYLES`, and `STATUS_STYLES` from `src/lib/status-styles.ts` — eliminating the local duplicate record maps that were defined inline in each file. Portal pages (`portal/page.tsx`, `portal/tickets/[id]/page.tsx`) had their `StatusBadge`/`PriorityBadge` helper functions rewritten from a chain of `if` checks to a single `Badge variant="secondary"` with a class lookup from `status-styles.ts`. Inline error states in `sign-in`, `sign-up`, and `FeedbackForm` swapped `text-red-600` → `text-destructive`; star ratings swapped `text-yellow-400` → `text-warning`; variance text swapped `text-red-600`/`text-green-600` → `text-destructive`/`text-success`; client message bubble swapped `bg-blue-100 dark:bg-blue-950` → `bg-primary/10`.

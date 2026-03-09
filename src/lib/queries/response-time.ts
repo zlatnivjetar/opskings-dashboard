@@ -1,7 +1,10 @@
 'use server';
 
-import { sql } from 'drizzle-orm';
+import { sql, eq } from 'drizzle-orm';
 import { adminDb } from '@/lib/db';
+import { tickets } from '@/lib/db/schema';
+import { withRLS } from '@/lib/db/rls-client';
+import { applyTicketFilters } from '@/lib/queries/filters';
 import { getUserContext } from '@/lib/auth/get-user-context';
 import type { FilterState, MultiFilter } from '@/types/filters';
 
@@ -86,9 +89,16 @@ export type OverdueTicketsResult = {
   totalPages: number;
 };
 
+export type ResolutionSummaryStats = {
+  resolvedCount: number;
+  avgHours: number | null;
+  medianHours: number | null;
+};
+
 export type ResponseTimeAll = {
   stats: ResolutionStatRow[];
   overdue: OverdueTicketsResult;
+  summary: ResolutionSummaryStats;
 };
 
 // ─── Server Actions ───────────────────────────────────────────────────────────
@@ -181,7 +191,7 @@ export async function getOverdueTickets(
   };
 }
 
-// Combined action — fires stats + overdue in parallel, one HTTP round-trip.
+// Combined action — fires stats + overdue + summary in parallel, one HTTP round-trip.
 // Fetches ALL overdue rows so the client can paginate instantly.
 export async function getResponseTimeAll(
   filters: FilterState,
@@ -189,7 +199,7 @@ export async function getResponseTimeAll(
   const ctx = await getUserContext();
   const p = toRTParams(filters);
 
-  const [statsRows, overdueRows] = await Promise.all([
+  const [statsRows, overdueRows, summaryRow] = await Promise.all([
     adminDb.execute<{
       priority: string;
       min_hours: string;
@@ -226,7 +236,24 @@ export async function getResponseTimeAll(
         ${1}, ${10000}
       )
     `),
+    withRLS(ctx, async (tx) => {
+      const whereClause = applyTicketFilters(
+        [eq(tickets.status, 'resolved')],
+        { date: filters.date, teamMember: filters.teamMember },
+      );
+      const rows = await tx
+        .select({
+          resolvedCount: sql<number>`COUNT(*)::int`,
+          avgHours: sql<string | null>`AVG(EXTRACT(EPOCH FROM (resolved_at - created_at)) / 3600)`,
+          medianHours: sql<string | null>`PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (resolved_at - created_at)) / 3600)`,
+        })
+        .from(tickets)
+        .where(whereClause);
+      return rows[0];
+    }),
   ]);
+
+  const overdueTotalCount = overdueRows.length > 0 ? Number(overdueRows[0].full_count) : 0;
 
   return {
     stats: statsRows.map((r) => ({
@@ -248,8 +275,13 @@ export async function getResponseTimeAll(
         expectedHours: Number(r.expected_hours),
         excessHours: Number(r.excess_hours),
       })),
-      totalCount: overdueRows.length,
+      totalCount: overdueTotalCount,
       totalPages: 1,
+    },
+    summary: {
+      resolvedCount: summaryRow?.resolvedCount ?? 0,
+      avgHours: summaryRow?.avgHours != null ? Number(summaryRow.avgHours) : null,
+      medianHours: summaryRow?.medianHours != null ? Number(summaryRow.medianHours) : null,
     },
   };
 }

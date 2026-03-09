@@ -259,6 +259,63 @@ export async function getDashboardAll(
   };
 }
 
+// ---------------------------------------------------------------------------
+// Previous-period comparison
+// ---------------------------------------------------------------------------
+
+function computePreviousFilters(filters: FilterState): FilterState | null {
+  const d = filters.date;
+  if (!d) return null;
+
+  if (d.operator === 'range') {
+    const from = new Date(d.value + 'T00:00:00Z');
+    const to = new Date((d.valueTo ?? d.value) + 'T00:00:00Z');
+    const durationMs = to.getTime() - from.getTime() + 86_400_000; // inclusive end
+    const prevFrom = new Date(from.getTime() - durationMs);
+    const prevTo = new Date(to.getTime() - durationMs);
+    return {
+      ...filters,
+      date: {
+        operator: 'range',
+        value: prevFrom.toISOString().split('T')[0],
+        valueTo: prevTo.toISOString().split('T')[0],
+      },
+    };
+  }
+
+  if (d.operator === 'exact') {
+    const day = new Date(d.value + 'T00:00:00Z');
+    day.setUTCDate(day.getUTCDate() - 1);
+    return {
+      ...filters,
+      date: { operator: 'exact', value: day.toISOString().split('T')[0] },
+    };
+  }
+
+  return null; // onOrAfter / onOrBefore — unbounded, skip comparison
+}
+
+export type DashboardAllWithComparison = {
+  summary: DashboardSummary;
+  ticketsOverTime: TicketsOverTimeRow[];
+  previousSummary: DashboardSummary | null;
+};
+
+export async function getDashboardAllWithComparison(
+  filters: FilterState,
+): Promise<DashboardAllWithComparison> {
+  const prevFilters = computePreviousFilters(filters);
+  const [current, previous] = await Promise.all([
+    getDashboardAll(filters),
+    prevFilters ? getDashboardSummary(prevFilters) : Promise.resolve(null),
+  ]);
+  return {
+    summary: current.summary,
+    ticketsOverTime: current.ticketsOverTime,
+    previousSummary: previous,
+  };
+}
+
 export async function getTicketsOverTime(filters: FilterState): Promise<TicketsOverTimeRow[]> {
   const ctx = await getUserContext();
   const p = toRLSParams(filters);
