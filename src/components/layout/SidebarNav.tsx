@@ -14,15 +14,15 @@ const TEAM_MEMBER_CATEGORIES: NavCategory[] = [
     category: 'General',
     items: [
       { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { href: '/dashboard/response-time', label: 'Response', icon: Clock },
-      { href: '/dashboard/team', label: 'Teams', icon: Users },
-      { href: '/dashboard/clients', label: 'Clients', icon: Building2 },
+      { href: '/response-time', label: 'Response', icon: Clock },
+      { href: '/team', label: 'Teams', icon: Users },
+      { href: '/clients', label: 'Clients', icon: Building2 },
     ],
   },
   {
     category: 'Support',
     items: [
-      { href: '/dashboard/distribution', label: 'Tickets', icon: Ticket },
+      { href: '/distribution', label: 'Tickets', icon: Ticket },
     ],
   },
 ];

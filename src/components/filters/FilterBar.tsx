@@ -1,35 +1,19 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { Plus, X } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { useFilterState } from '@/hooks/use-filter-state';
 import { DateFilter } from './DateFilter';
 import { MultiSelectFilter, type SelectOption } from './MultiSelectFilter';
 import { getReferenceData } from '@/lib/actions/reference';
 import { PRIORITY_OPTIONS } from '@/types/filters';
 import type { FilterState } from '@/types/filters';
+import { formatUsername } from '@/lib/format';
 
 type FilterKey = keyof FilterState;
 
-const FILTER_LABELS: Record<FilterKey, string> = {
-  date: 'Date',
-  teamMember: 'Team Member',
-  ticketType: 'Ticket Type',
-  priority: 'Priority',
-};
-
 const ALL_FILTER_KEYS: FilterKey[] = ['date', 'teamMember', 'ticketType', 'priority'];
-
-function todayStr(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 export function FilterBar({ allowedFilters }: { allowedFilters?: FilterKey[] }) {
   const { filters, setFilter, removeFilter, clearFilters } = useFilterState();
@@ -41,15 +25,12 @@ export function FilterBar({ allowedFilters }: { allowedFilters?: FilterKey[] }) 
     staleTime: 300_000,
   });
 
-  const teamMemberOptions = refData?.teamMembers ?? [];
-  const ticketTypeOptions = refData?.ticketTypes ?? [];
-
-  const tmOptions: SelectOption[] = teamMemberOptions.map((m) => ({
+  const tmOptions: SelectOption[] = (refData?.teamMembers ?? []).map((m) => ({
     value: m.id,
-    label: m.username,
+    label: formatUsername(m.username),
   }));
 
-  const ttOptions: SelectOption[] = ticketTypeOptions.map((t) => ({
+  const ttOptions: SelectOption[] = (refData?.ticketTypes ?? []).map((t) => ({
     value: t.id,
     label: t.typeName,
   }));
@@ -59,93 +40,74 @@ export function FilterBar({ allowedFilters }: { allowedFilters?: FilterKey[] }) 
     label: p.charAt(0).toUpperCase() + p.slice(1),
   }));
 
-  const activeKeys = allowedKeys.filter((k) => filters[k] !== undefined);
-  const inactiveKeys = allowedKeys.filter((k) => filters[k] === undefined);
+  const hasAnyFilter =
+    (allowedKeys.includes('date') && !!filters.date) ||
+    (allowedKeys.includes('teamMember') && (filters.teamMember?.values.length ?? 0) > 0) ||
+    (allowedKeys.includes('ticketType') && (filters.ticketType?.values.length ?? 0) > 0) ||
+    (allowedKeys.includes('priority') && (filters.priority?.values.length ?? 0) > 0);
 
-  function addFilter(key: FilterKey) {
-    switch (key) {
-      case 'date':
-        setFilter('date', { operator: 'exact', value: todayStr() });
-        break;
-      case 'teamMember':
-        setFilter('teamMember', { operator: 'isAnyOf', values: [] });
-        break;
-      case 'ticketType':
-        setFilter('ticketType', { operator: 'isAnyOf', values: [] });
-        break;
-      case 'priority':
-        setFilter('priority', { operator: 'isAnyOf', values: [] });
-        break;
-    }
-  }
+  const showDateDivider =
+    allowedKeys.includes('date') &&
+    (allowedKeys.includes('teamMember') ||
+      allowedKeys.includes('ticketType') ||
+      allowedKeys.includes('priority'));
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {activeKeys.includes('date') && filters.date && (
+    <div className="bg-card border rounded-lg p-3 flex items-center gap-3 flex-wrap">
+      {allowedKeys.includes('date') && (
         <DateFilter
           value={filters.date}
           onChange={(v) => setFilter('date', v)}
-          onRemove={() => removeFilter('date')}
+          onClear={() => removeFilter('date')}
         />
       )}
 
-      {activeKeys.includes('teamMember') && filters.teamMember && (
+      {showDateDivider && (
+        <div className="h-6 w-px bg-border shrink-0" aria-hidden="true" />
+      )}
+
+      {allowedKeys.includes('teamMember') && (
         <MultiSelectFilter
-          label="Team Member"
+          label="Assignees"
+          placeholder="Assignees..."
           value={filters.teamMember}
           options={tmOptions}
           onChange={(v) => setFilter('teamMember', v)}
-          onRemove={() => removeFilter('teamMember')}
+          onClear={() => removeFilter('teamMember')}
         />
       )}
 
-      {activeKeys.includes('ticketType') && filters.ticketType && (
+      {allowedKeys.includes('ticketType') && (
         <MultiSelectFilter
-          label="Ticket Type"
+          label="Types"
+          placeholder="Ticket types..."
           value={filters.ticketType}
           options={ttOptions}
           onChange={(v) => setFilter('ticketType', v)}
-          onRemove={() => removeFilter('ticketType')}
+          onClear={() => removeFilter('ticketType')}
         />
       )}
 
-      {activeKeys.includes('priority') && filters.priority && (
+      {allowedKeys.includes('priority') && (
         <MultiSelectFilter
           label="Priority"
+          placeholder="Priorities..."
           value={filters.priority}
           options={priorityOptions}
           onChange={(v) => setFilter('priority', v)}
-          onRemove={() => removeFilter('priority')}
+          onClear={() => removeFilter('priority')}
         />
       )}
 
-      {inactiveKeys.length > 0 && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="rounded-full">
-              <Plus className="h-3.5 w-3.5 mr-1" />
-              Add Filter
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            {inactiveKeys.map((key) => (
-              <DropdownMenuItem key={key} onSelect={() => addFilter(key)}>
-                {FILTER_LABELS[key]}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
-
-      {activeKeys.length > 1 && (
+      {hasAnyFilter && (
         <Button
           variant="ghost"
           size="sm"
-          className="text-muted-foreground h-7 px-2"
+          className="h-9 px-3 text-muted-foreground hover:text-foreground ml-auto"
           onClick={clearFilters}
         >
-          <X className="h-3.5 w-3.5 mr-1" />
-          Clear all
+          <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+          Reset
         </Button>
       )}
     </div>

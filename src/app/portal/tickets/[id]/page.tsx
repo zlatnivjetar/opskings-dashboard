@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getTicketDetail } from '@/lib/queries/portal';
+import { formatUsername } from '@/lib/format';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { FeedbackForm } from '@/components/portal/FeedbackForm';
@@ -89,7 +90,7 @@ export default async function TicketDetailPage({
                 >
                   <p className="text-sm whitespace-pre-wrap">{msg.messageText}</p>
                   <p className="text-xs text-muted-foreground">
-                    {msg.fromClient ? 'You' : (msg.teamMemberName ?? 'Support Team')}
+                    {msg.fromClient ? 'You' : (msg.teamMemberName ? formatUsername(msg.teamMemberName) : 'Support Team')}
                     {' · '}
                     {new Date(msg.createdAt).toLocaleString()}
                   </p>

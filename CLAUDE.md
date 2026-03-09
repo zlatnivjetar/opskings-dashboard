@@ -22,7 +22,7 @@ Full plan: `docs/ui-overhaul-plan.md` — do NOT deviate from phase order withou
 
 - [x] Phase 1 — Theme Infrastructure + Typography + Density
 - [x] Phase 2 — Sidebar Redesign
-- [ ] Phase 3 — Filter Bar Redesign
+- [x] Phase 3 — Filter Bar Redesign
 - [ ] Phase 8 — Badges + Status Colors (done early, quick wins)
 - [ ] Phase 4 — KPI Cards + Comparison Backend
 - [ ] Phase 6 — Dashboard Page Layout
@@ -146,6 +146,11 @@ Examples of good entries:
 - `SidebarNav` is a client component — never pass Lucide icon components (or any object with methods) as props from `Sidebar.tsx` (server); nav category definitions with icons live entirely in `SidebarNav.tsx`, server passes only `role: string`
 - `ThemeToggle` requires a `mounted` state guard before rendering the icon — `resolvedTheme` is `undefined` on the server, causing hydration mismatch without it
 - `SignOutButton` is now `variant="ghost"` with muted text — no longer destructive
+
+- `FilterBar` no longer uses an "Add Filter" dropdown — all allowed filters are always rendered inline; `FilterBadge.tsx` is unused but kept until Phase 11 cleanup
+- `DateFilter` props changed: `value` is now `DateFilterType | undefined` (not required), `onRemove` replaced by `onClear` — always uses `range` operator, renders as inline From/To pair
+- `MultiSelectFilter` props changed: added `placeholder: string`, `value` is now `MultiFilterType | undefined`, `onRemove` replaced by `onClear`, operator selector removed (always `isAnyOf`)
+- `formatUsername(username)` in `src/lib/format.ts` — converts `snake_case` usernames to "Title Case" for display; applied in FilterBar, TeamPerformanceTable, portal ticket detail
 
 _(append here after each phase)_
 

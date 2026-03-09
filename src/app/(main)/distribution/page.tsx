@@ -15,7 +15,6 @@ const DIST_FILTERS = ['date', 'teamMember'] as const;
 function Inner() {
   const { filters } = useFilterState();
 
-  // Single request — both queries run in parallel on the server via Promise.all.
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard', 'distribution', filters],
     queryFn: () => getDistributionAll(filters),

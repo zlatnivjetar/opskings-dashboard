@@ -2,31 +2,17 @@
 
 import { useState } from 'react';
 import { format } from 'date-fns';
-import type { DateRange } from 'react-day-picker';
+import { CalendarIcon, X } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { FilterBadge } from './FilterBadge';
-import type { DateFilter as DateFilterType, DateOperator } from '@/types/filters';
+import { cn } from '@/lib/utils';
+import type { DateFilter as DateFilterType } from '@/types/filters';
 
 interface DateFilterProps {
-  value: DateFilterType;
+  value: DateFilterType | undefined;
   onChange: (value: DateFilterType) => void;
-  onRemove: () => void;
+  onClear: () => void;
 }
-
-const OPERATOR_LABELS: Record<DateOperator, string> = {
-  exact: 'on',
-  range: 'between',
-  onOrBefore: 'on or before',
-  onOrAfter: 'on or after',
-};
 
 function parseLocalDate(dateStr: string): Date {
   const [y, m, d] = dateStr.split('-').map(Number);
@@ -37,81 +23,81 @@ function toDateStr(date: Date): string {
   return format(date, 'yyyy-MM-dd');
 }
 
-function formatLabel(filter: DateFilterType): string {
-  const op = OPERATOR_LABELS[filter.operator];
-  const from = format(parseLocalDate(filter.value), 'MMM d, yyyy');
-  if (filter.operator === 'range' && filter.valueTo) {
-    const to = format(parseLocalDate(filter.valueTo), 'MMM d, yyyy');
-    return `Date ${op} ${from} – ${to}`;
-  }
-  return `Date ${op} ${from}`;
-}
+export function DateFilter({ value, onChange, onClear }: DateFilterProps) {
+  const [fromOpen, setFromOpen] = useState(false);
+  const [toOpen, setToOpen] = useState(false);
 
-export function DateFilter({ value, onChange, onRemove }: DateFilterProps) {
-  const [open, setOpen] = useState(false);
+  const fromDate = value?.value ? parseLocalDate(value.value) : undefined;
+  const toDate = value?.valueTo ? parseLocalDate(value.valueTo) : undefined;
 
-  function handleOperatorChange(op: DateOperator) {
-    const next: DateFilterType = { operator: op, value: value.value };
-    if (op === 'range') next.valueTo = value.valueTo ?? value.value;
-    onChange(next);
-  }
-
-  function handleSingleSelect(date: Date | undefined) {
+  function handleFromSelect(date: Date | undefined) {
     if (!date) return;
-    onChange({ ...value, value: toDateStr(date) });
-  }
-
-  function handleRangeSelect(range: DateRange | undefined) {
-    if (!range?.from) return;
     onChange({
       operator: 'range',
-      value: toDateStr(range.from),
-      valueTo: range.to ? toDateStr(range.to) : undefined,
+      value: toDateStr(date),
+      valueTo: value?.valueTo ?? toDateStr(date),
     });
+    setFromOpen(false);
   }
 
-  const isRange = value.operator === 'range';
-  const selectedDate = parseLocalDate(value.value);
-  const selectedRange: DateRange | undefined = isRange
-    ? {
-        from: selectedDate,
-        to: value.valueTo ? parseLocalDate(value.valueTo) : undefined,
-      }
-    : undefined;
+  function handleToSelect(date: Date | undefined) {
+    if (!date) return;
+    onChange({
+      operator: 'range',
+      value: value?.value ?? toDateStr(date),
+      valueTo: toDateStr(date),
+    });
+    setToOpen(false);
+  }
+
+  const triggerCls =
+    'h-9 px-3 bg-secondary/50 hover:bg-secondary border rounded-md text-sm flex items-center gap-2 transition-colors cursor-pointer';
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <FilterBadge onRemove={onRemove}>
-        <PopoverTrigger className="px-3 py-1 hover:bg-muted/60 transition-colors cursor-pointer">
-          {formatLabel(value)}
+    <div className="flex items-center gap-1.5">
+      <span className="text-xs text-muted-foreground select-none">From</span>
+
+      <Popover open={fromOpen} onOpenChange={setFromOpen}>
+        <PopoverTrigger asChild>
+          <button className={cn(triggerCls, !fromDate && 'text-muted-foreground')}>
+            <CalendarIcon className="h-3.5 w-3.5 shrink-0" />
+            {fromDate ? format(fromDate, 'MMM d, yyyy') : 'Start date'}
+          </button>
         </PopoverTrigger>
-      </FilterBadge>
-      <PopoverContent className="w-auto p-3 space-y-3" align="start">
-        <Select
-          value={value.operator}
-          onValueChange={(v) => handleOperatorChange(v as DateOperator)}
-        >
-          <SelectTrigger className="w-44">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="exact">on</SelectItem>
-            <SelectItem value="range">between</SelectItem>
-            <SelectItem value="onOrBefore">on or before</SelectItem>
-            <SelectItem value="onOrAfter">on or after</SelectItem>
-          </SelectContent>
-        </Select>
-        {isRange ? (
+        <PopoverContent className="w-auto p-3" align="start">
+          <Calendar mode="single" selected={fromDate} onSelect={handleFromSelect} />
+        </PopoverContent>
+      </Popover>
+
+      <span className="text-xs text-muted-foreground select-none">To</span>
+
+      <Popover open={toOpen} onOpenChange={setToOpen}>
+        <PopoverTrigger asChild>
+          <button className={cn(triggerCls, !toDate && 'text-muted-foreground')}>
+            <CalendarIcon className="h-3.5 w-3.5 shrink-0" />
+            {toDate ? format(toDate, 'MMM d, yyyy') : 'End date'}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-3" align="start">
           <Calendar
-            mode="range"
-            selected={selectedRange}
-            onSelect={handleRangeSelect}
-            numberOfMonths={2}
+            mode="single"
+            selected={toDate}
+            onSelect={handleToSelect}
+            disabled={fromDate ? (date: Date) => date < fromDate! : undefined}
           />
-        ) : (
-          <Calendar mode="single" selected={selectedDate} onSelect={handleSingleSelect} />
-        )}
-      </PopoverContent>
-    </Popover>
+        </PopoverContent>
+      </Popover>
+
+      {value && (
+        <button
+          type="button"
+          onClick={onClear}
+          className="h-5 w-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          aria-label="Clear date filter"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      )}
+    </div>
   );
 }

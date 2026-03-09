@@ -1,5 +1,9 @@
 # Implementation Log
 
+## UI Overhaul Phase 3: Filter Bar Redesign
+
+Replaced the "Add Filter" dropdown pattern with a persistent inline filter bar. `FilterBar.tsx` now renders all allowed filters simultaneously in a `bg-card border rounded-lg` container with a visual divider between the date section and multi-selects; a Reset button (with `RotateCcw` icon) appears at the far right only when any filter is active. `DateFilter.tsx` was rewritten as an inline From/To pair — two independent Calendar popovers with `CalendarIcon` triggers and a small `×` clear button when a date is set; always uses the `range` operator. `MultiSelectFilter.tsx` was rewritten without an operator selector (fixed `isAnyOf`): the trigger shows placeholder text when empty and `Label (N)` count when items are selected, with a per-filter `×` clear button; the Command palette popover internals are unchanged. Both components' prop interfaces changed (`value` is now `| undefined`, `onRemove` → `onClear`, `placeholder` added to multi-select). `FilterBadge.tsx` is now unused — kept for Phase 11 cleanup.
+
 ## UI Overhaul Phase 2: Sidebar Redesign
 
 Rewrote `Sidebar.tsx` with a Crown logo, `ThemeToggle` in the header, and a user profile section (initials avatar, name, role label, email, sign-out). Rewrote `SidebarNav.tsx` to accept categorized nav with Lucide icons and a `border-l-2` active indicator using sidebar tokens. Created `ThemeToggle.tsx` (Sun/Moon swap via `useTheme`); required a `mounted` state guard to prevent hydration mismatch since `resolvedTheme` is undefined on the server. Lucide icon components can't cross the RSC→client boundary as props — nav categories with icons were moved entirely into `SidebarNav.tsx`, with the server passing only `role: string`.

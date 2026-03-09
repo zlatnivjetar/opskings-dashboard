@@ -26,6 +26,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { getTeamPerformance, type TeamPerformanceRow } from '@/lib/queries/team';
+import { formatUsername } from '@/lib/format';
 
 // ─── Custom filter functions ───────────────────────────────────────────────
 
@@ -148,7 +149,7 @@ export function TeamPerformanceTable() {
         filterFn: 'includesString',
         cell: ({ row }) => (
           <div className="flex items-center gap-2">
-            <span>{row.original.username}</span>
+            <span>{formatUsername(row.original.username)}</span>
             {row.original.id === topPerformerId && (
               <Badge className="text-[10px] px-1.5 py-0 bg-emerald-100 text-emerald-800 border-emerald-200 border">
                 Top Performer
@@ -221,6 +222,7 @@ export function TeamPerformanceTable() {
     [topPerformerId]
   );
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data,
     columns,

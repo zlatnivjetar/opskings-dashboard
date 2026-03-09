@@ -12,3 +12,10 @@ export function formatHours(hours: number): string {
 export function formatPercent(pct: number): string {
   return `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`;
 }
+
+export function formatUsername(username: string): string {
+  return username
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}

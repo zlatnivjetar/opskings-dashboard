@@ -81,16 +81,15 @@ export function ClientAnalysisTable() {
     staleTime: 30_000,
   });
 
-  const allRows = data?.rows ?? [];
-
   // Client-side search
   const filtered = useMemo(() => {
+    const allRows = data?.rows ?? [];
     if (!search) return allRows;
     const q = search.toLowerCase();
     return allRows.filter((r) =>
       r.clientName.toLowerCase().includes(q) || r.planType.toLowerCase().includes(q),
     );
-  }, [allRows, search]);
+  }, [data?.rows, search]);
 
   // Client-side sort
   const sorted = useMemo(
