@@ -23,7 +23,7 @@ Full plan: `docs/ui-overhaul-plan.md` — do NOT deviate from phase order withou
 - [x] Phase 1 — Theme Infrastructure + Typography + Density
 - [x] Phase 2 — Sidebar Redesign
 - [x] Phase 3 — Filter Bar Redesign
-- [ ] Phase 8 — Badges + Status Colors (done early, quick wins)
+- [x] Phase 8 — Badges + Status Colors (done early, quick wins)
 - [ ] Phase 4 — KPI Cards + Comparison Backend
 - [ ] Phase 6 — Dashboard Page Layout
 - [ ] Phase 5 — Chart Upgrades
@@ -151,6 +151,8 @@ Examples of good entries:
 - `DateFilter` props changed: `value` is now `DateFilterType | undefined` (not required), `onRemove` replaced by `onClear` — always uses `range` operator, renders as inline From/To pair
 - `MultiSelectFilter` props changed: added `placeholder: string`, `value` is now `MultiFilterType | undefined`, `onRemove` replaced by `onClear`, operator selector removed (always `isAnyOf`)
 - `formatUsername(username)` in `src/lib/format.ts` — converts `snake_case` usernames to "Title Case" for display; applied in FilterBar, TeamPerformanceTable, portal ticket detail
+
+- `PRIORITY_STYLES`, `STATUS_STYLES`, `PLAN_STYLES` in `src/lib/status-styles.ts` are now the canonical source for badge colors — never create local inline style maps for these in any component; portal `StatusBadge`/`PriorityBadge` use `Badge variant="secondary"` + class override (not `variant="destructive"` or hardcoded bg-* classes)
 
 _(append here after each phase)_
 

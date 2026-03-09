@@ -33,7 +33,7 @@ export function FeedbackForm({ ticketId }: { ticketId: number }) {
     <div className="border rounded-lg p-4 space-y-4">
       <h2 className="font-semibold">Leave Feedback</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-destructive">{error}</p>}
 
         <div className="space-y-1.5">
           <Label>Rating</Label>
@@ -45,7 +45,7 @@ export function FeedbackForm({ ticketId }: { ticketId: number }) {
                 onClick={() => setRating(n)}
                 className={`w-9 h-9 rounded border text-sm font-medium transition-colors ${
                   rating >= n
-                    ? 'bg-yellow-400 border-yellow-500 text-white'
+                    ? 'bg-warning border-warning text-warning-foreground'
                     : 'border-border hover:bg-muted'
                 }`}
               >

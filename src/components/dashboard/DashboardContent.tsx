@@ -87,7 +87,7 @@ function SummaryCards({ data }: { data: DashboardSummary | undefined }) {
                   key={star}
                   className={
                     star <= Math.round(data.avgRating!)
-                      ? 'text-yellow-400 text-sm'
+                      ? 'text-warning text-sm'
                       : 'text-muted-foreground text-sm'
                   }
                 >

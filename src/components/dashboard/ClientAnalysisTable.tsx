@@ -19,12 +19,7 @@ import {
   type ClientAnalysisRow,
   type SortableColumn,
 } from '@/lib/queries/clients';
-
-const PLAN_BADGE: Record<string, { label: string; className: string }> = {
-  starter: { label: 'Starter', className: 'bg-gray-100 text-gray-700 border-gray-200' },
-  professional: { label: 'Professional', className: 'bg-blue-100 text-blue-700 border-blue-200' },
-  enterprise: { label: 'Enterprise', className: 'bg-purple-100 text-purple-700 border-purple-200' },
-};
+import { PLAN_STYLES } from '@/lib/status-styles';
 
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat('en-US', {
@@ -168,9 +163,9 @@ export function ClientAnalysisTable() {
               </TableRow>
             ) : (
               pageRows.map((row) => {
-                const plan = PLAN_BADGE[row.planType] ?? {
+                const plan = PLAN_STYLES[row.planType] ?? {
                   label: row.planType,
-                  className: 'bg-gray-100 text-gray-700',
+                  className: 'bg-muted text-muted-foreground',
                 };
                 return (
                   <TableRow key={row.id}>

@@ -2,22 +2,23 @@ import Link from 'next/link';
 import { getMyTickets } from '@/lib/queries/portal';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { STATUS_STYLES, PRIORITY_STYLES } from '@/lib/status-styles';
 
 function StatusBadge({ status }: { status: string }) {
-  if (status === 'open') return <Badge variant="destructive">open</Badge>;
-  if (status === 'in_progress')
-    return <Badge className="bg-yellow-500 hover:bg-yellow-500 text-white">in progress</Badge>;
-  if (status === 'resolved')
-    return <Badge className="bg-green-600 hover:bg-green-600 text-white">resolved</Badge>;
-  return <Badge variant="secondary">{status}</Badge>;
+  const label = status === 'in_progress' ? 'in progress' : status;
+  return (
+    <Badge variant="secondary" className={STATUS_STYLES[status] ?? ''}>
+      {label}
+    </Badge>
+  );
 }
 
 function PriorityBadge({ priority }: { priority: string }) {
-  if (priority === 'urgent') return <Badge variant="destructive">urgent</Badge>;
-  if (priority === 'high')
-    return <Badge className="bg-orange-500 hover:bg-orange-500 text-white">high</Badge>;
-  if (priority === 'medium') return <Badge variant="secondary">medium</Badge>;
-  return <Badge variant="outline">low</Badge>;
+  return (
+    <Badge variant="secondary" className={PRIORITY_STYLES[priority] ?? ''}>
+      {priority}
+    </Badge>
+  );
 }
 
 export default async function PortalPage({

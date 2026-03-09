@@ -13,13 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { OverdueTicketRow } from '@/lib/queries/response-time';
-
-const PRIORITY_STYLES: Record<string, string> = {
-  low:      'bg-slate-100 text-slate-700',
-  medium:   'bg-yellow-100 text-yellow-700',
-  high:     'bg-orange-100 text-orange-700',
-  urgent: 'bg-red-100 text-red-700',
-};
+import { PRIORITY_STYLES } from '@/lib/status-styles';
 
 function fmt(hours: number): string {
   return hours >= 1 ? `${hours.toFixed(1)}h` : `${Math.round(hours * 60)}m`;
@@ -102,7 +96,7 @@ export function OverdueTicketsTable({
                   <TableCell className="text-right font-mono text-sm text-muted-foreground">
                     {fmt(row.expectedHours)}
                   </TableCell>
-                  <TableCell className="text-right font-mono text-sm font-semibold text-red-600">
+                  <TableCell className="text-right font-mono text-sm font-semibold text-destructive">
                     +{fmt(row.excessHours)}
                   </TableCell>
                 </TableRow>

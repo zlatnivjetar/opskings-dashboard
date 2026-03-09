@@ -151,7 +151,7 @@ export function TeamPerformanceTable() {
           <div className="flex items-center gap-2">
             <span>{formatUsername(row.original.username)}</span>
             {row.original.id === topPerformerId && (
-              <Badge className="text-[10px] px-1.5 py-0 bg-emerald-100 text-emerald-800 border-emerald-200 border">
+              <Badge className="text-[10px] px-1.5 py-0 bg-success/15 text-success border-success/30 border">
                 Top Performer
               </Badge>
             )}
@@ -303,7 +303,7 @@ export function TeamPerformanceTable() {
                 <TableRow
                   key={row.id}
                   className={
-                    row.original.id === topPerformerId ? 'bg-emerald-50/60 dark:bg-emerald-950/20' : ''
+                    row.original.id === topPerformerId ? 'bg-success/10' : ''
                   }
                 >
                   {row.getVisibleCells().map((cell) => (

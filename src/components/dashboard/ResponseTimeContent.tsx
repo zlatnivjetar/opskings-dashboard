@@ -31,7 +31,7 @@ function VarianceBadge({ actual, expected }: { actual: number; expected: number 
   return (
     <span
       className={`inline-flex items-center gap-1 font-medium ${
-        over ? 'text-red-600' : 'text-green-600'
+        over ? 'text-destructive' : 'text-success'
       }`}
     >
       {over ? '+' : ''}
