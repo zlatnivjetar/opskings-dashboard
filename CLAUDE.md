@@ -20,7 +20,7 @@
 
 Full plan: `docs/ui-overhaul-plan.md` — do NOT deviate from phase order without updating the plan.
 
-- [ ] Phase 1 — Theme Infrastructure + Typography + Density
+- [x] Phase 1 — Theme Infrastructure + Typography + Density
 - [ ] Phase 2 — Sidebar Redesign
 - [ ] Phase 3 — Filter Bar Redesign
 - [ ] Phase 8 — Badges + Status Colors (done early, quick wins)
@@ -134,6 +134,14 @@ Examples of good entries:
 - Recharts SVG fill/stroke does NOT support CSS `oklch()` — use the `useChartTheme()` hook (hex values per resolved theme) for all chart colors; never pass `var(--...)` directly to Recharts props
 - Recharts tooltip `contentStyle.background` must be a literal hex or computed inline style — CSS variables don't resolve in Recharts' out-of-tree tooltip DOM
 - New shared utilities: `src/lib/format.ts` (number/date formatting), `src/lib/status-styles.ts` (badge classes), `src/hooks/use-chart-theme.ts` (theme-aware chart colors)
+
+- `ThemeProvider` lives in `src/app/providers.tsx` (wraps `QueryClientProvider`); `defaultTheme="dark"`, `attribute="class"` — theme class applied to `<html>`
+- New semantic tokens available: `success`, `success-foreground`, `warning`, `warning-foreground`, `info`, `info-foreground`, `chart-6` — use via `bg-success/15`, `text-warning`, etc.
+- Typography utilities in `globals.css @layer utilities`: `.text-page-title`, `.text-section-title`, `.text-card-label`, `.text-card-value`, `.text-table`, `.text-caption`
+- `src/hooks/use-chart-theme.ts` — `useChartTheme()` returns hex color map per resolved theme; use for all Recharts `fill`/`stroke` props (never `var(--...)` in SVG attributes)
+- `src/lib/format.ts` — `formatCompact`, `formatHours`, `formatPercent`
+- `src/lib/status-styles.ts` — `PRIORITY_STYLES`, `STATUS_STYLES`, `PLAN_STYLES` record maps
+- Button base CVA no longer has `mt-4 mb-1` — buttons render inline without margin
 
 _(append here after each phase)_
 
