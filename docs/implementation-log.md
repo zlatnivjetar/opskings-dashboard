@@ -1,5 +1,9 @@
 # Implementation Log
 
+## UI Overhaul Phase 12: Visual Regression Baselines
+
+Installed `@playwright/test` (not `@playwright/cli` as originally planned — the test package is what's needed) and Chromium. Created `playwright.config.ts` with two projects: `auth-setup` (runs first) and `baselines` (depends on auth). `e2e/auth.setup.ts` signs in as team member (`john@company.com`) and client (`admin@techstart.com`), saving `storageState` to `e2e/.auth/` (gitignored). `e2e/visual-baselines.spec.ts` covers 16 screenshots across 8 routes × 2 themes, split into three `describe` blocks with the correct `storageState` per group; dashboard routes use `waitForLoadState('networkidle')` to ensure data is loaded before capture. Added `npm run test:e2e` and `npm run test:e2e:update` scripts. First run reports "snapshot doesn't exist" for all 16 tests — run `--update-snapshots` once to commit baselines, after which subsequent runs pass only if nothing has changed visually.
+
 ## UI Overhaul Phase 11: Distribution Page Removal + Cleanup
 
 Deleted `src/app/(main)/distribution/page.tsx` and `src/components/filters/FilterBadge.tsx` (confirmed no remaining imports). Removed the "Support > Tickets" category from `SidebarNav.tsx`, leaving team members with only the "General" nav group. Added a `/distribution` → `/dashboard` redirect in `middleware.ts` for any bookmarked URLs. Removed `getDistributionAll` from `src/lib/queries/dashboard.ts` — its only consumer was the now-deleted distribution page; the dashboard's `getDashboardAll` already fetches the same data inline. `ResolutionComparisonChart.tsx` was already absent (deleted in Phase 5). `tsc --noEmit` and `npm run lint` both pass clean.

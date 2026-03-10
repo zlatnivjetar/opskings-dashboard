@@ -31,7 +31,7 @@ Full plan: `docs/ui-overhaul-plan.md` — do NOT deviate from phase order withou
 - [x] Phase 10 — Portal & Auth Polish
 - [x] Phase 9 — Motion Polish
 - [x] Phase 11 — Distribution Page Removal + Cleanup
-- [ ] Phase 12 — Visual Regression Baselines
+- [x] Phase 12 — Visual Regression Baselines
 
 ## Key Decisions (READ BEFORE EVERY MILESTONE)
 
