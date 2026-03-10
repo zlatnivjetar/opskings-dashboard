@@ -193,15 +193,15 @@ function Inner() {
                           <TableCell className="pl-6">
                             <PriorityBadge priority={row.priority} />
                           </TableCell>
-                          <TableCell className="text-right font-mono text-sm">
+                          <TableCell className="text-right text-sm">
                             {formatCompact(resolved)}
                           </TableCell>
-                          <TableCell className="text-right font-mono text-sm font-bold">
+                          <TableCell className="text-right text-sm font-bold">
                             {overdueCount > 0
                               ? `${formatCompact(overdueCount)}${pctStr}`
                               : '—'}
                           </TableCell>
-                          <TableCell className="text-right font-mono text-sm">
+                          <TableCell className="text-right text-sm">
                             {fmt(row.medianHours)}
                           </TableCell>
                           <TableCell className="text-right pr-6">
