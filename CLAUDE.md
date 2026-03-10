@@ -27,7 +27,7 @@ Full plan: `docs/ui-overhaul-plan.md` — do NOT deviate from phase order withou
 - [x] Phase 4 — KPI Cards + Comparison Backend
 - [x] Phase 6 — Dashboard Page Layout
 - [x] Phase 5 — Chart Upgrades
-- [ ] Phase 7 — Response Time Page Overhaul
+- [x] Phase 7 — Response Time Page Overhaul
 - [ ] Phase 10 — Portal & Auth Polish
 - [ ] Phase 9 — Motion Polish
 - [ ] Phase 11 — Distribution Page Removal + Cleanup
@@ -172,6 +172,10 @@ Examples of good entries:
 - `ResolutionHistogramChart` at `src/components/charts/ResolutionHistogramChart.tsx` — Recharts stacked `BarChart` with priority-colored stacks; Fine/Standard/Coarse granularity toggle; fine bins (10 buckets from `< 30m` to `24h+`) returned by backend, merged client-side for Standard (6 bins) and Coarse (3 bins)
 - `HistogramRow` type and histogram query added to `getResponseTimeAll` in `response-time.ts` — uses `withRLS` + CASE bucketing on `EXTRACT(EPOCH FROM (resolved_at - created_at))` grouped by priority and bin index; 4th parallel query in the `Promise.all`
 - `ResolutionComparisonChart.tsx` deleted — replaced by `ResolutionHistogramChart` in `ResponseTimeContent`
+
+- `get_overdue_tickets_rls` return type changed — now includes `created_at TEXT` (deployed via `scripts/deploy-rt-function.ts` which DROPs and re-CREATEs the function); `OverdueTicketRow` in `response-time.ts` has `createdAt: string`
+- `ResponseTimeContent.tsx` layout: `grid-cols-3` two-column row — histogram at `lg:col-span-2`, "Summary by Priority" table at `col-span-1`; resolved count per priority is derived client-side by summing histogram bins; overdue count per priority is derived from `overdue.rows` — no extra queries needed
+- `formatDate(iso: string)` added to `src/lib/format.ts` — formats ISO timestamp to `"Jan 15, 2025"`; available for reuse in Phase 10 portal dates
 
 _(append here after each phase)_
 

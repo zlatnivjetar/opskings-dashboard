@@ -76,6 +76,7 @@ export type OverdueTicketRow = {
   ticketId: number;
   title: string;
   clientName: string;
+  createdAt: string;
   typeName: string;
   priority: string;
   actualHours: number;
@@ -160,6 +161,7 @@ export async function getOverdueTickets(
     ticket_id: number;
     title: string;
     client_name: string;
+    created_at: string;
     type_name: string;
     priority: string;
     actual_hours: string;
@@ -189,6 +191,7 @@ export async function getOverdueTickets(
       ticketId: Number(r.ticket_id),
       title: r.title,
       clientName: r.client_name,
+      createdAt: r.created_at,
       typeName: r.type_name,
       priority: r.priority,
       actualHours: Number(r.actual_hours),
@@ -242,6 +245,7 @@ export async function getResponseTimeAll(
       ticket_id: number;
       title: string;
       client_name: string;
+      created_at: string;
       type_name: string;
       priority: string;
       actual_hours: string;
@@ -334,6 +338,7 @@ export async function getResponseTimeAll(
         ticketId: Number(r.ticket_id),
         title: r.title,
         clientName: r.client_name,
+        createdAt: r.created_at,
         typeName: r.type_name,
         priority: r.priority,
         actualHours: Number(r.actual_hours),

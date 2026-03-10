@@ -1,9 +1,10 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -19,8 +20,10 @@ import { OverdueTicketsTable } from '@/components/dashboard/OverdueTicketsTable'
 import { useFilterState } from '@/hooks/use-filter-state';
 import { getResponseTimeAll } from '@/lib/queries/response-time';
 import { formatCompact, formatHours } from '@/lib/format';
+import { PRIORITY_STYLES } from '@/lib/status-styles';
 
 const RT_FILTERS = ['date', 'teamMember'] as const;
+const PRIORITY_ORDER = ['low', 'medium', 'high', 'urgent'];
 
 function fmt(hours: number): string {
   return `${hours.toFixed(1)}h`;
@@ -46,8 +49,6 @@ function VarianceBadge({ actual, expected }: { actual: number; expected: number 
   );
 }
 
-const PRIORITY_ORDER = ['low', 'medium', 'high', 'urgent'];
-
 function Inner() {
   const { filters } = useFilterState();
 
@@ -57,9 +58,34 @@ function Inner() {
     staleTime: 30_000,
   });
 
-  const sorted = [...(data?.stats ?? [])].sort(
-    (a, b) => PRIORITY_ORDER.indexOf(a.priority) - PRIORITY_ORDER.indexOf(b.priority),
+  const sorted = useMemo(
+    () =>
+      [...(data?.stats ?? [])].sort(
+        (a, b) => PRIORITY_ORDER.indexOf(a.priority) - PRIORITY_ORDER.indexOf(b.priority),
+      ),
+    [data?.stats],
   );
+
+  // Resolved count per priority — derived from histogram (sum all bins)
+  const resolvedByPriority = useMemo(() => {
+    const result: Record<string, number> = { low: 0, medium: 0, high: 0, urgent: 0 };
+    for (const bin of data?.histogram ?? []) {
+      result.low += bin.low;
+      result.medium += bin.medium;
+      result.high += bin.high;
+      result.urgent += bin.urgent;
+    }
+    return result;
+  }, [data?.histogram]);
+
+  // Overdue count per priority — derived from overdue rows
+  const overdueByPriority = useMemo(() => {
+    const result: Record<string, number> = {};
+    for (const row of data?.overdue.rows ?? []) {
+      result[row.priority] = (result[row.priority] ?? 0) + 1;
+    }
+    return result;
+  }, [data?.overdue.rows]);
 
   const { summary, overdue } = data ?? {};
   const overduePct =
@@ -115,89 +141,100 @@ function Inner() {
         </div>
       )}
 
-      {/* ── Summary Stats Table ── */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Resolution Time by Priority</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <Skeleton className="h-[180px] w-full" />
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Priority</TableHead>
-                  <TableHead className="text-right">Min</TableHead>
-                  <TableHead className="text-right">Median</TableHead>
-                  <TableHead className="text-right">Avg</TableHead>
-                  <TableHead className="text-right">Max</TableHead>
-                  <TableHead className="text-right">Expected</TableHead>
-                  <TableHead className="text-right">Variance</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sorted.length === 0 ? (
+      {/* ── Two-column: Histogram + Summary Table ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Resolution Time Distribution</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-[280px] w-full" />
+            ) : (
+              <ResolutionHistogramChart data={data?.histogram ?? []} />
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Summary by Priority</CardTitle>
+          </CardHeader>
+          <CardContent className="px-0">
+            {isLoading ? (
+              <Skeleton className="h-[280px] w-full mx-6" />
+            ) : (
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
-                      No resolved tickets in the selected period
-                    </TableCell>
+                    <TableHead className="pl-6">Priority</TableHead>
+                    <TableHead className="text-right">Resolved</TableHead>
+                    <TableHead className="text-right">Overdue</TableHead>
+                    <TableHead className="text-right">Median</TableHead>
+                    <TableHead className="text-right pr-6">Δ Exp</TableHead>
                   </TableRow>
-                ) : (
-                  sorted.map((row) => (
-                    <TableRow key={row.priority}>
-                      <TableCell className="font-medium capitalize">{row.priority}</TableCell>
-                      <TableCell className="text-right font-mono text-sm">
-                        {fmt(row.minHours)}
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-sm">
-                        {fmt(row.medianHours)}
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-sm">
-                        {fmt(row.avgHours)}
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-sm">
-                        {fmt(row.maxHours)}
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-sm text-muted-foreground">
-                        {fmt(row.expectedHours)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <VarianceBadge actual={row.avgHours} expected={row.expectedHours} />
+                </TableHeader>
+                <TableBody>
+                  {sorted.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-6 text-muted-foreground pl-6">
+                        No data
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* ── Resolution Histogram ── */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Resolution Time Distribution</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <Skeleton className="h-[280px] w-full" />
-          ) : (
-            <ResolutionHistogramChart data={data?.histogram ?? []} />
-          )}
-        </CardContent>
-      </Card>
+                  ) : (
+                    sorted.map((row) => {
+                      const resolved = resolvedByPriority[row.priority] ?? 0;
+                      const overdueCount = overdueByPriority[row.priority] ?? 0;
+                      const pctStr =
+                        resolved > 0
+                          ? ` (${((overdueCount / resolved) * 100).toFixed(0)}%)`
+                          : '';
+                      return (
+                        <TableRow key={row.priority}>
+                          <TableCell className="pl-6">
+                            <Badge
+                              variant="secondary"
+                              className={PRIORITY_STYLES[row.priority] ?? ''}
+                            >
+                              {row.priority.charAt(0).toUpperCase() + row.priority.slice(1)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-sm">
+                            {formatCompact(resolved)}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-sm text-destructive">
+                            {overdueCount > 0
+                              ? `${formatCompact(overdueCount)}${pctStr}`
+                              : '—'}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-sm">
+                            {fmt(row.medianHours)}
+                          </TableCell>
+                          <TableCell className="text-right pr-6">
+                            <VarianceBadge actual={row.avgHours} expected={row.expectedHours} />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       {/* ── Overdue Tickets ── */}
       <Card>
         <CardHeader>
           <CardTitle>Overdue Tickets</CardTitle>
+          <p className="text-caption">
+            Resolved tickets where actual resolution time exceeded the expected hours for the ticket
+            type.
+          </p>
         </CardHeader>
         <CardContent>
-          <OverdueTicketsTable
-            rows={data?.overdue.rows ?? []}
-            isLoading={isLoading}
-          />
+          <OverdueTicketsTable rows={data?.overdue.rows ?? []} isLoading={isLoading} />
         </CardContent>
       </Card>
     </div>

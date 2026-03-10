@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { OverdueTicketRow } from '@/lib/queries/response-time';
 import { PRIORITY_STYLES } from '@/lib/status-styles';
+import { formatDate } from '@/lib/format';
 
 function fmt(hours: number): string {
   return hours >= 1 ? `${hours.toFixed(1)}h` : `${Math.round(hours * 60)}m`;
@@ -30,7 +31,7 @@ export function OverdueTicketsTable({
   rows,
   isLoading,
 }: OverdueTicketsTableProps) {
-  const COLS = 8;
+  const COLS = 9;
   const [page, setPage] = useState(1);
 
   const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
@@ -47,6 +48,7 @@ export function OverdueTicketsTable({
               <TableHead>Ticket ID</TableHead>
               <TableHead>Title</TableHead>
               <TableHead>Client</TableHead>
+              <TableHead>Created</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Priority</TableHead>
               <TableHead className="text-right">Actual</TableHead>
@@ -81,6 +83,7 @@ export function OverdueTicketsTable({
                     {row.title}
                   </TableCell>
                   <TableCell className="whitespace-nowrap">{row.clientName}</TableCell>
+                  <TableCell className="whitespace-nowrap text-caption">{formatDate(row.createdAt)}</TableCell>
                   <TableCell className="whitespace-nowrap">{row.typeName}</TableCell>
                   <TableCell>
                     <Badge
