@@ -1,214 +1,41 @@
-# Current Work: UI Overhaul
-
-## Original Milestones (all complete)
-
-- [x] Milestone 0: Project Setup
-- [x] Milestone 1: Drizzle Schema + Database Indexes
-- [x] Milestone 2: BetterAuth Setup + User Schema
-- [x] Milestone 3: RLS Policies + Database Role Setup
-- [x] Milestone 4: Shared Filter System
-- [x] Milestone 5: Dashboard Overview Cards + Tickets Over Time
-- [x] Milestone 6: Team Performance Table
-- [x] Milestone 7: Distribution Charts
-- [x] Milestone 8: Client Analysis View
-- [x] Milestone 9: Response Time Analysis
-- [x] Milestone 10: Client Portal
-- [x] Milestone 11: Performance Optimization + Testing
-- [x] Milestone 12: Deploy + Documentation
-
-## UI Overhaul Phases
-
-Full plan: `docs/ui-overhaul-plan.md` — do NOT deviate from phase order without updating the plan.
-
-- [x] Phase 1 — Theme Infrastructure + Typography + Density
-- [x] Phase 2 — Sidebar Redesign
-- [x] Phase 3 — Filter Bar Redesign
-- [x] Phase 8 — Badges + Status Colors (done early, quick wins)
-- [x] Phase 4 — KPI Cards + Comparison Backend
-- [x] Phase 6 — Dashboard Page Layout
-- [x] Phase 5 — Chart Upgrades
-- [x] Phase 7 — Response Time Page Overhaul
-- [x] Phase 10 — Portal & Auth Polish
-- [x] Phase 9 — Motion Polish
-- [x] Phase 11 — Distribution Page Removal + Cleanup
-- [x] Phase 12 — Visual Regression Baselines
-
-## Key Decisions (READ BEFORE EVERY MILESTONE)
-
-After completing each milestone, append decisions that future milestones
-depend on. Format: what was decided + where the code lives. Only include
-decisions another session NEEDS to avoid breaking things. Skip obvious stuff.
-
-Examples of good entries:
-- Data queries use `withRLS()` from `src/lib/db/rls-client.ts` — never use bare `db` for user-facing queries
-- BetterAuth session accessed via `auth.api.getSession({ headers: await headers() })`
-- Filters sync to URL params via `useFilterState()` hook in `src/hooks/use-filter-state.ts`
-
-- Both DB connections use Transaction Pooler (port 6543) — postgres.js clients MUST set `prepare: false` or queries will fail
-- DB usernames include project ref suffix: `postgres.nlgkpveooqabtftreesr` / `rls_user.nlgkpveooqabtftreesr`
-- `@/*` alias maps to `src/*` (not root) — keep all source under `src/`
-- TanStack Query provider lives in `src/app/providers.tsx` (client component wrapping root layout)
-
-- Drizzle schema is the source of truth for types — all 7 tables + relations in `src/lib/db/schema.ts`; inferred types exported from same file
-- `drizzle-kit push` fails on this Supabase instance (CHECK constraint bug in drizzle-kit 0.31.x); use direct SQL or `drizzle-kit migrate` with hand-crafted migrations instead
-- The generated migration `drizzle/0000_lively_terror.sql` reflects full schema but was NOT applied (tables pre-exist); composite indexes were applied directly via `CREATE INDEX IF NOT EXISTS`
-
-- BetterAuth session accessed via `auth.api.getSession({ headers: await headers() })` — helper at `src/lib/auth/get-user-context.ts`
-- Auth tables (user, session, account, verification) live in `src/lib/db/auth-schema.ts`; merged into main `db` instance in `src/lib/db/index.ts`
-- Middleware uses self-fetch to `/api/auth/get-session` (postgres.js cannot run in Edge Runtime); don't import auth server directly in middleware
-- `(dashboard)` and `(portal)` route groups were renamed to real segments `dashboard/` and `portal/` — middleware redirects to `/dashboard` and `/portal` as URL paths
-- Seed script (`scripts/seed-auth-users.ts`) must use dynamic `await import('../src/lib/auth')` — static import is hoisted before dotenv loads, causing ECONNREFUSED
-- additionalFields with `input: false` cannot be set during signup; seed patches them with direct SQL after `auth.api.signUpEmail`
-- `npm run seed:auth` is idempotent — re-running updates existing users rather than failing
-
-- ALL user-facing data queries MUST go through `withRLS(ctx, fn)` from `src/lib/db/rls-client.ts` — never use bare `db` or `adminDb` for queries that touch user data
-- `withRLS` opens a transaction on `adminDb`, issues `SET LOCAL ROLE rls_user` first (transaction-scoped, auto-resets on commit/rollback), then sets 4 session vars: `app.user_id`, `app.user_role`, `app.client_id`, `app.team_member_id`
-- `rls_user` is a NOLOGIN role assumed via `SET LOCAL ROLE` — there is no separate connection string for it; `DATABASE_RLS_URL` is unused and can be removed
-- `ctx` passed to `withRLS` is the full object from `getUserContext()`: `{ userId, role, clientId, teamMemberId }`
-- RLS helper functions in Postgres: `get_app_user_role()`, `get_app_client_id()`, `get_app_user_id()`, `get_app_team_member_id()` — used inside policy USING/WITH CHECK expressions
-- `messages_insert` policy enforces attribution: team member inserts require `from_team_member_id = get_app_team_member_id()`; client inserts require `from_team_member_id IS NULL`
-
-- Filter types + `PRIORITY_OPTIONS` constant live in `src/types/filters.ts` — do NOT put plain constants in `'use server'` files (they get proxied and lose their prototype)
-- `applyTicketFilters(baseConditions, filters)` in `src/lib/queries/filters.ts` — accepts a `(SQL | undefined)[]` base array and returns `and(...all)` for use directly in Drizzle `.where()`
-- `useFilterState()` in `src/hooks/use-filter-state.ts` — syncs `FilterState` to URL params; multi-filter operator key is always written even with empty values so the filter badge stays visible while selecting; use `filters` in TanStack Query keys for automatic refetch
-- `FilterBar` in `src/components/filters/FilterBar.tsx` is self-contained (calls `useFilterState` + fetches reference data internally) — wrap in `<Suspense>` in any page that uses it (requires `useSearchParams`)
-- Reference data server actions (`getTeamMembers`, `getTicketTypes`) in `src/lib/actions/reference.ts` use `adminDb` directly — these are lookup tables, not user data
-
-- Dashboard aggregate queries use Postgres stored functions (`get_dashboard_summary_rls`, `get_tickets_over_time_rls`) in `database/rls-functions.sql` — called via `adminDb.execute(sql`SELECT * FROM fn(...)`)` in autocommit (no transaction wrapper); each function internally does `SET LOCAL ROLE rls_user` + `set_config` + query in one DB round-trip
-- All non-string parameters passed to these functions must be serialised before the `sql` template: dates → `.toISOString()`, int arrays → `'{1,2}'` (Postgres array literal), text arrays → `'{low,high}'`; explicit `::timestamptz` / `::int[]` / `::text[]` casts added in the SQL call
-- Exception to the withRLS rule: these two dashboard server actions call `adminDb.execute()` directly because the RLS enforcement is encapsulated inside the DB functions themselves — `withRLS` is still required for all other user-data queries
-- BetterAuth `cookieCache` enabled in `src/lib/auth/index.ts` (`maxAge: 300`) — session data stored in a signed cookie, eliminating the DB round-trip on repeated `getSession` calls; users must sign out and back in once after this change is deployed
-- `getUserContext` wrapped in React `cache()` in `src/lib/auth/get-user-context.ts` — deduplicates session lookup within a single server render
-- `DashboardContent` client component at `src/components/dashboard/DashboardContent.tsx` — uses `useFilterState()` + two parallel `useQuery` calls (`staleTime: 30000`); `filters` object in query key drives automatic refetch on filter change
-- `TicketsOverTimeChart` at `src/components/charts/TicketsOverTimeChart.tsx` — Recharts `LineChart`; Created (blue #3b82f6) and Resolved (green #22c55e) lines; grouped by `created_at` month (cohort view)
-
-- `getTeamPerformance()` server action in `src/lib/queries/team.ts` — uses `withRLS()`; single query LEFT JOINing `team_members → tickets → ticket_feedback`; returns all 15 members including those with 0 tickets
-- `TeamPerformanceTable` client component at `src/components/dashboard/TeamPerformanceTable.tsx` — TanStack Table (`@tanstack/react-table`) with client-side sort + filter; custom `numberRangeFilter` FilterFn with `autoRemove` guard (`!Array.isArray(val)` needed — TanStack Table calls `autoRemove` with `undefined` when clearing, causing destructure crash without the guard)
-- Top performer computed client-side: highest resolution rate + rating ≥ average; green row tint + badge
-
-- `getTicketsByType` and `getTicketsByPriority` server actions in `src/lib/queries/dashboard.ts` — use `withRLS()` + Drizzle ORM queries (not stored functions); strip `ticketType` and `priority` from FilterState before applying so charts always show full distribution scoped only by date + team member
-- `FilterBar` accepts an optional `allowedFilters?: FilterKey[]` prop — pass `['date', 'teamMember']` on distribution page to restrict available filters in the UI
-- Recharts tooltip `contentStyle.background` must use a literal hex (`#ffffff`) not a CSS variable — CSS variables don't resolve inside Recharts' tooltip DOM (rendered outside component tree)
-- `TicketsByTypeChart` at `src/components/charts/TicketsByTypeChart.tsx` — Recharts PieChart donut; 14-color palette; percentage labels rendered via `any`-typed custom label function (Recharts `PieLabelRenderProps` doesn't include `percentage` in its type despite passing it at runtime)
-- `TicketsByPriorityChart` at `src/components/charts/TicketsByPriorityChart.tsx` — stacked BarChart; priority order enforced via `CASE` in SQL ORDER BY; open=red/in_progress=yellow/resolved=green
-- Distribution page at `src/app/dashboard/distribution/page.tsx` — client component following same `Inner` + outer `<Suspense>` pattern as DashboardContent
-
-- `getClientAnalysis()` server action in `src/lib/queries/clients.ts` — calls `get_client_analysis_rls()` stored function via `adminDb.execute()` (not `withRLS`); RLS enforcement is inside the function; accepts search, page, pageSize, sortBy, sortOrder params
-- `get_client_analysis_rls()` in `database/rls-functions.sql` — uses `EXECUTE format()` with `USING` clause for dynamic ORDER BY (sort column whitelisted via `CASE`); returns `full_count` via `COUNT(*) OVER()` window function so count + data arrive in one query; `last_ticket_date` cast to TEXT via `TO_CHAR(..., 'YYYY-MM-DD"T"HH24:MI:SS"Z"')` to guarantee ISO string across postgres.js versions
-- `ClientAnalysisTable` at `src/components/dashboard/ClientAnalysisTable.tsx` — local state for search/page/sort (no URL sync); `keepPreviousData` from TanStack Query eliminates skeleton flash on param changes; `isFetching && !isLoading` drives opacity fade instead
-- Clients page at `src/app/dashboard/clients/page.tsx` — server component; role-guards with `getUserContext()` + `redirect('/portal')` before rendering the client component
-
-- `getResolutionTimeStats()` and `getOverdueTickets()` server actions in `src/lib/queries/response-time.ts` — call `get_resolution_time_stats_rls` and `get_overdue_tickets_rls` via `adminDb.execute()` (RLS inside function); accept date + teamMember filters only (no ticketType/priority — those are the dimensions being measured)
-- `expected_hours` in stats = `AVG(ticket_types.avg_resolution_hours)` for resolved tickets in each priority bucket (not a fixed lookup — it averages whatever type benchmarks land in that priority group)
-- `get_overdue_tickets_rls` uses `COUNT(*) OVER()` window function for `full_count` — pagination + total in one query, same pattern as `get_client_analysis_rls`
-- `ResponseTimeContent` client component at `src/components/dashboard/ResponseTimeContent.tsx` — contains all 'use client' logic; page.tsx is a server component that role-guards then renders it (same split as clients page)
-- `OverdueTicketsTable` receives `filters` as a prop and resets `page` state to 1 via `useEffect` when filters change
-
-- Portal server actions in `src/lib/queries/portal.ts` — all 4 actions (`getMyTickets`, `getTicketDetail`, `createTicket`, `submitFeedback`) use `withRLS()`; `createTicket` inserts ticket + first message in the same transaction; `clientId` is always taken from session context, never user input
-- `getTicketDetail` fetches ticket, messages (with team member names), and feedback in 3 sequential queries inside a single `withRLS` transaction — RLS on tickets table enforces client can only see their own ticket
-- Portal layout (`src/app/portal/layout.tsx`) is a server component — checks role, redirects `team_member` to `/dashboard`, fetches email for header display; middleware also enforces this at the Edge
-- Client components in `src/components/portal/`: `SignOutButton` (authClient.signOut + router.push), `NewTicketForm` (calls createTicket, router.push on success), `FeedbackForm` (calls submitFeedback, router.refresh on success)
-- `src/components/ui/textarea.tsx` added (was missing from original shadcn install)
-- Ticket detail page uses `router.refresh()` after feedback submission so the server component re-fetches and hides the form without a full navigation
-
-- `get_client_analysis_rls()` rewritten with CTE pre-aggregation (ticket_stats + payment_stats CTEs) — eliminates the n_tickets × n_payments cross-join that produced 283k rows; static SQL replaces `EXECUTE FORMAT` enabling plan caching; function deployed to Supabase
-- Next.js serialises concurrent server action calls per page — never use two separate `useQuery` calls for data needed on the same render; instead use a combined server action with `Promise.all` and a single `useQuery`
-- Combined actions: `getDashboardAll` (summary + ticketsOverTime), `getDistributionAll` (byType + byPriority), `getResponseTimeAll(filters, page, pageSize)` (stats + overdue) — all in `src/lib/queries/dashboard.ts` and `src/lib/queries/response-time.ts`
-- `OverdueTicketsTable` now receives data as props (rows, totalCount, totalPages, page, onPageChange, isLoading, isFetching) — query and page state owned by `ResponseTimeContent`
-- `scripts/` excluded from tsconfig `exclude` array — prevents Next.js build from type-checking benchmark/seed scripts
-- Performance results and E2E browser timings documented in `docs/performance-results.md`; benchmark script at `scripts/benchmark.ts`
-
-- Shared `Sidebar` server component at `src/components/layout/Sidebar.tsx` — reads `getUserContext()` for role and `auth.api.getSession()` for email; renders role-specific nav links via `SidebarNav` client component (`src/components/layout/SidebarNav.tsx`) which uses `usePathname()` for active-link highlighting
-- Both `dashboard/layout.tsx` and `portal/layout.tsx` use `flex h-screen` with `<Sidebar />` + `<main className="flex-1 overflow-y-auto">` — no `ml-*` offset needed
-- Portal layout no longer fetches email itself — that moved into `Sidebar`; portal layout only does the `team_member` role-guard redirect
-- All portal pages own their `p-6` outer padding — the old layout's `px-4 py-6` container is gone; dashboard pages already owned theirs via `DashboardContent`'s `p-6` wrapper
-- `SignOutButton` in `src/components/portal/SignOutButton.tsx` is `variant="destructive" className="w-full"` — only rendered inside the sidebar now
-
-- `.env.example` committed to repo (`.gitignore` has `!.env.example` exception) — contains placeholder values for `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`
-- README.md is the polished interview-facing document — includes architecture diagram, RLS explanation, performance tables, scaling strategy, setup instructions, and screenshot/video placeholders
-
-### UI Overhaul constraints (READ before any UI phase)
-
-- `useFilterState()` hook and URL serialization are UNTOUCHED during the UI overhaul — only the rendering layer of filter components changes
-- Do NOT add `'use client'` to components currently server-rendered — follow the existing server/client split (server component fetches session/data, passes to client component)
-- Recharts SVG fill/stroke does NOT support CSS `oklch()` — use the `useChartTheme()` hook (hex values per resolved theme) for all chart colors; never pass `var(--...)` directly to Recharts props
-- Recharts tooltip `contentStyle.background` must be a literal hex or computed inline style — CSS variables don't resolve in Recharts' out-of-tree tooltip DOM
-- New shared utilities: `src/lib/format.ts` (number/date formatting), `src/lib/status-styles.ts` (badge classes), `src/hooks/use-chart-theme.ts` (theme-aware chart colors)
-
-- `ThemeProvider` lives in `src/app/providers.tsx` (wraps `QueryClientProvider`); `defaultTheme="dark"`, `attribute="class"` — theme class applied to `<html>`
-- New semantic tokens available: `success`, `success-foreground`, `warning`, `warning-foreground`, `info`, `info-foreground`, `chart-6` — use via `bg-success/15`, `text-warning`, etc.
-- Typography utilities in `globals.css @layer utilities`: `.text-page-title`, `.text-section-title`, `.text-card-label`, `.text-card-value`, `.text-table`, `.text-caption`
-- `src/hooks/use-chart-theme.ts` — `useChartTheme()` returns hex color map per resolved theme; use for all Recharts `fill`/`stroke` props (never `var(--...)` in SVG attributes)
-- `src/lib/format.ts` — `formatCompact`, `formatHours`, `formatPercent`
-- `src/lib/status-styles.ts` — `PRIORITY_STYLES`, `STATUS_STYLES`, `PLAN_STYLES` record maps
-- Button base CVA no longer has `mt-4 mb-1` — buttons render inline without margin
-
-- `SidebarNav` is a client component — never pass Lucide icon components (or any object with methods) as props from `Sidebar.tsx` (server); nav category definitions with icons live entirely in `SidebarNav.tsx`, server passes only `role: string`
-- `ThemeToggle` requires a `mounted` state guard before rendering the icon — `resolvedTheme` is `undefined` on the server, causing hydration mismatch without it
-- `SignOutButton` is now `variant="ghost"` with muted text — no longer destructive
-
-- `FilterBar` no longer uses an "Add Filter" dropdown — all allowed filters are always rendered inline; `FilterBadge.tsx` is unused but kept until Phase 11 cleanup
-- `DateFilter` props changed: `value` is now `DateFilterType | undefined` (not required), `onRemove` replaced by `onClear` — always uses `range` operator, renders as inline From/To pair
-- `MultiSelectFilter` props changed: added `placeholder: string`, `value` is now `MultiFilterType | undefined`, `onRemove` replaced by `onClear`, operator selector removed (always `isAnyOf`)
-- `formatUsername(username)` in `src/lib/format.ts` — converts `snake_case` usernames to "Title Case" for display; applied in FilterBar, TeamPerformanceTable, portal ticket detail
-
-- `PRIORITY_STYLES`, `STATUS_STYLES`, `PLAN_STYLES` in `src/lib/status-styles.ts` are now the canonical source for badge colors — never create local inline style maps for these in any component; portal `StatusBadge`/`PriorityBadge` use `Badge variant="secondary"` + class override (not `variant="destructive"` or hardcoded bg-* classes)
-
-- `KpiCard` at `src/components/dashboard/KpiCard.tsx` — props: `label`, `value`, `subtitle?`, `trend?: { value: number; label: string }`, `positiveIsGood?: boolean` (default true); when false, a positive trend renders red and negative renders green (used for resolution time and active tickets)
-- `getDashboardAllWithComparison(filters)` in `src/lib/queries/dashboard.ts` — computes previous period via `computePreviousFilters` (shifts `range` by same duration, `exact` by 1 day; returns `null` for unbounded operators) then runs current + previous in parallel; returns `{ summary, ticketsOverTime, previousSummary: DashboardSummary | null }`
-- `ResponseTimeAll` now includes `summary: ResolutionSummaryStats` — added as a third parallel `withRLS` query inside `getResponseTimeAll`; computes resolved count, avg hours, and median hours via `PERCENTILE_CONT(0.5)` on `resolved_at - created_at`; `ResponseTimeContent` migrated to single `useQuery` calling `getResponseTimeAll`
-- `get_dashboard_summary_rls` `open_tickets` column now counts `status IN ('open', 'in_progress')` — previous count of `status = 'open'` only was 1.9k vs actual ~12.9k active tickets; KPI label changed to "OPEN TICKETS" (showing open+in_progress)
-
-- `getDashboardAll` now returns `byType: TicketsByTypeRow[]` and `byPriority: TicketsByPriorityRow[]` in addition to `summary` and `ticketsOverTime` — 4 queries run in one `Promise.all`; `getDashboardAllWithComparison` passes distribution data through
-- `DashboardContent` query key changed from `'all-with-comparison'` to `'all-with-distributions'` — update any cache invalidation that references the old key
-- Distribution page (`src/app/(main)/distribution/page.tsx`) still uses `getDistributionAll` independently — do NOT remove until Phase 11
-
-- `ChartTabs` reusable toggle component at `src/components/charts/ChartTabs.tsx` — segmented control with `bg-muted` background and `bg-background shadow-sm` active state; used by all chart components for view/filter/granularity toggles
-- `tooltipStyle(colors)` in `src/components/charts/ChartTooltip.tsx` — returns `CSSProperties` for Recharts `Tooltip contentStyle`; uses hex values from `useChartTheme()` (never CSS variables)
-- `useChartTheme()` expanded with `tooltipBg`, `tooltipBorder`, `tooltipText`, `grid`, `axis`, and per-priority hex colors (`urgent`, `high`, `medium`, `low`); new helpers `chartPalette(colors, n)` and `priorityColor(colors, priority)` exported from same file
-- `TicketsOverTimeChart` converted from `LineChart` to grouped `BarChart`; internal All/Created/Resolved tabs control which bars render
-- `TicketsByTypeChart` now uses `chartPalette()` for colors; internal Top 5/Top 8/All toggle creates an "Other" bucket; Count/% toggle switches slice labels between absolute and percentage
-- `TicketsByPriorityChart` fully rewritten from Recharts `BarChart` to a custom Tailwind component — horizontal stacked bar (`flex h-3 rounded-full overflow-hidden`) + breakdown list; All/Open/In Progress/Resolved filter tabs change the displayed metric per priority row
-- `ResolutionHistogramChart` at `src/components/charts/ResolutionHistogramChart.tsx` — Recharts stacked `BarChart` with priority-colored stacks; Fine/Standard/Coarse granularity toggle; fine bins (10 buckets from `< 30m` to `24h+`) returned by backend, merged client-side for Standard (6 bins) and Coarse (3 bins)
-- `HistogramRow` type and histogram query added to `getResponseTimeAll` in `response-time.ts` — uses `withRLS` + CASE bucketing on `EXTRACT(EPOCH FROM (resolved_at - created_at))` grouped by priority and bin index; 4th parallel query in the `Promise.all`
-- `ResolutionComparisonChart.tsx` deleted — replaced by `ResolutionHistogramChart` in `ResponseTimeContent`
-
-- `get_overdue_tickets_rls` return type changed — now includes `created_at TEXT` (deployed via `scripts/deploy-rt-function.ts` which DROPs and re-CREATEs the function); `OverdueTicketRow` in `response-time.ts` has `createdAt: string`
-- `ResponseTimeContent.tsx` layout: `grid-cols-3` two-column row — histogram at `lg:col-span-2`, "Summary by Priority" table at `col-span-1`; resolved count per priority is derived client-side by summing histogram bins; overdue count per priority is derived from `overdue.rows` — no extra queries needed
-- `formatDate(iso: string)` added to `src/lib/format.ts` — formats ISO timestamp to `"Jan 15, 2025"`; available for reuse in Phase 10 portal dates
-
-- `motion` (Framer Motion v11+) installed — import from `motion/react` in all component files
-- `MotionMain` client component at `src/components/layout/MotionMain.tsx` — wraps `<main>` with `AnimatePresence mode="wait"` keyed on `usePathname()`; imported by server layouts (RSC can safely pass `children` as opaque nodes into client components)
-- `SidebarNav` uses `LayoutGroup id="sidebar-nav"` + `motion.span layoutId="active-bg"` for the sliding active background — `border-l-2` indicator removed; icon + label wrapped in `<span className="relative z-10">` to sit above the animated bg
-- `KpiCard` is now `'use client'` (required for motion import) — accepts `delay?: number` prop for stagger; wrap is `motion.div` with `initial={{ opacity: 0, y: 8 }}`; no exit animation
-- `motion` runtime handles `prefers-reduced-motion` automatically — no explicit `useReducedMotion()` checks needed
-
-_(append here after each phase)_
-
-## Completion Protocol
-
-When I type exactly **COMPLETED**, do the following:
-1. Check off the just-completed phase in the UI Overhaul Phases list
-2. Append any Key Decisions from this phase under "UI Overhaul constraints" (only non-obvious things that affect future phases)
-3. Write a short implementation summary to `docs/implementation-log.md` (append, don't overwrite) — 3-4 sentences max: what changed, what files were touched, any gotchas
-4. Commit and push to GitHub with a concise message (e.g., "feat: ui overhaul phase 1 — theme + typography")
-
-Do NOT update CLAUDE.md or the implementation log at any other time.
-Do NOT treat partial phrases like "that's completed" or "I completed it" as the trigger.
-Only the exact standalone input: **COMPLETED**
+# OpsKings Dashboard
 
 ## Project Context
 
-This is a support analytics dashboard for the OpsKings development interview.
+Support analytics dashboard. Next.js 16 (App Router), TypeScript, Drizzle ORM,
+Supabase (PostgreSQL), BetterAuth, TanStack Query, Recharts, shadcn/ui, Tailwind CSS v4.
 
-**Tech stack:** Next.js 15 (App Router), TypeScript, Drizzle ORM, Supabase (PostgreSQL), BetterAuth, TanStack Query, Recharts, shadcn/ui, Tailwind CSS. Deployed on Vercel.
+~40k tickets, 50 clients, 15 team members, 14 ticket types.
+Two roles: `team_member` (full dashboard) and `client` (portal, own data only).
 
-**Database:** ~40k tickets across 50 clients, 15 team members, 14 ticket types. Schema and seed already exist in `database/schema.sql` and `database/seed.sql`.
+## Critical Rules
 
-**Two user types:**
-- Internal team members — full dashboard analytics access
-- Client users — portal view, own data only
+- ALL user-facing queries MUST use `withRLS(ctx, fn)` from `src/lib/db/rls-client.ts` — never bare `db` or `adminDb`
+- postgres.js clients MUST set `prepare: false` — Transaction Pooler doesn't support prepared statements
+- Recharts SVG `fill`/`stroke` does NOT support `oklch()` — use `useChartTheme()` from `src/hooks/use-chart-theme.ts` for all chart colors
+- Recharts tooltip `contentStyle.background` must be a hex literal — CSS variables don't resolve in Recharts' out-of-tree tooltip DOM
+- `PRIORITY_STYLES`, `STATUS_STYLES`, `PLAN_STYLES` in `src/lib/status-styles.ts` are the canonical source for badge colors — never create local maps
+- Each page must use a single combined server action + single `useQuery` — Next.js serializes concurrent server action calls, causing waterfalls
+- `drizzle-kit push` fails on this Supabase instance (CHECK constraint bug) — use `drizzle-kit migrate` with hand-crafted migrations or direct SQL
+- Middleware fetches session via self-fetch to `/api/auth/get-session` — postgres.js cannot run in Edge Runtime, don't import auth server directly in middleware
+- Do NOT pass Lucide icon components as props from server components to client components — they contain methods and can't be serialized
 
-**RLS strategy:** BetterAuth handles auth at app layer. RLS enforced at DB layer via Postgres session variables (`set_config`) inside Drizzle transactions. Two DB connections: admin (superuser, bypasses RLS) and rls_user (non-superuser, RLS enforced).
+## Shared Utilities
 
-**Performance targets:** Dashboard <500ms, filtered queries <1s, pagination <300ms, charts <800ms.
+- `src/lib/format.ts` — `formatCompact`, `formatHours`, `formatPercent`, `formatDate`, `formatUsername`
+- `src/lib/status-styles.ts` — `PRIORITY_STYLES`, `STATUS_STYLES`, `PLAN_STYLES`
+- `src/hooks/use-chart-theme.ts` — `useChartTheme()`, `chartPalette()`, `priorityColor()`
+- `src/components/charts/ChartTooltip.tsx` — `tooltipStyle(colors)`
+- `src/components/charts/ChartTabs.tsx` — reusable segmented control
+- `src/lib/queries/filters.ts` — `applyTicketFilters()`
+- `src/hooks/use-filter-state.ts` — `useFilterState()` (syncs filters to URL params, wrap consumer in `<Suspense>`)
+
+Full architecture reference: `docs/architecture-decisions.md`
+
+## Completion Protocol
+
+When I type exactly **COMPLETED**:
+1. Write a short summary to `docs/implementation-log.md` (append, don't overwrite) — what changed, files touched, gotchas
+2. Commit and push with a concise message
+
+Only the exact standalone input **COMPLETED** triggers this.
