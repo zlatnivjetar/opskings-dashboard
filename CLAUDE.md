@@ -28,7 +28,7 @@ Full plan: `docs/ui-overhaul-plan.md` — do NOT deviate from phase order withou
 - [x] Phase 6 — Dashboard Page Layout
 - [x] Phase 5 — Chart Upgrades
 - [x] Phase 7 — Response Time Page Overhaul
-- [ ] Phase 10 — Portal & Auth Polish
+- [x] Phase 10 — Portal & Auth Polish
 - [ ] Phase 9 — Motion Polish
 - [ ] Phase 11 — Distribution Page Removal + Cleanup
 - [ ] Phase 12 — Visual Regression Baselines
