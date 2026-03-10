@@ -101,13 +101,13 @@ function KpiCards({
 function ChartsSkeleton() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <Card className="lg:col-span-2">
-        <CardHeader><CardTitle>Tickets Over Time</CardTitle></CardHeader>
-        <CardContent><Skeleton className="h-[300px] w-full" /></CardContent>
+      <Card className="lg:col-span-2 p-4">
+        <Skeleton className="h-4 w-32 mb-4" />
+        <Skeleton className="h-[300px] w-full" />
       </Card>
-      <Card className="lg:col-span-1">
-        <CardHeader><CardTitle>Tickets by Type</CardTitle></CardHeader>
-        <CardContent><Skeleton className="h-[300px] w-full" /></CardContent>
+      <Card className="lg:col-span-1 p-4">
+        <Skeleton className="h-4 w-32 mb-4" />
+        <Skeleton className="h-[300px] w-full" />
       </Card>
     </div>
   );
@@ -159,7 +159,7 @@ function PrioritySection({
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <Skeleton className="h-[300px] w-full" />
+          <Skeleton className="h-[200px] w-full" />
         ) : (
           <TicketsByPriorityChart data={byPriority ?? []} />
         )}

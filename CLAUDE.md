@@ -26,7 +26,7 @@ Full plan: `docs/ui-overhaul-plan.md` — do NOT deviate from phase order withou
 - [x] Phase 8 — Badges + Status Colors (done early, quick wins)
 - [x] Phase 4 — KPI Cards + Comparison Backend
 - [x] Phase 6 — Dashboard Page Layout
-- [ ] Phase 5 — Chart Upgrades
+- [x] Phase 5 — Chart Upgrades
 - [ ] Phase 7 — Response Time Page Overhaul
 - [ ] Phase 10 — Portal & Auth Polish
 - [ ] Phase 9 — Motion Polish
@@ -162,6 +162,16 @@ Examples of good entries:
 - `getDashboardAll` now returns `byType: TicketsByTypeRow[]` and `byPriority: TicketsByPriorityRow[]` in addition to `summary` and `ticketsOverTime` — 4 queries run in one `Promise.all`; `getDashboardAllWithComparison` passes distribution data through
 - `DashboardContent` query key changed from `'all-with-comparison'` to `'all-with-distributions'` — update any cache invalidation that references the old key
 - Distribution page (`src/app/(main)/distribution/page.tsx`) still uses `getDistributionAll` independently — do NOT remove until Phase 11
+
+- `ChartTabs` reusable toggle component at `src/components/charts/ChartTabs.tsx` — segmented control with `bg-muted` background and `bg-background shadow-sm` active state; used by all chart components for view/filter/granularity toggles
+- `tooltipStyle(colors)` in `src/components/charts/ChartTooltip.tsx` — returns `CSSProperties` for Recharts `Tooltip contentStyle`; uses hex values from `useChartTheme()` (never CSS variables)
+- `useChartTheme()` expanded with `tooltipBg`, `tooltipBorder`, `tooltipText`, `grid`, `axis`, and per-priority hex colors (`urgent`, `high`, `medium`, `low`); new helpers `chartPalette(colors, n)` and `priorityColor(colors, priority)` exported from same file
+- `TicketsOverTimeChart` converted from `LineChart` to grouped `BarChart`; internal All/Created/Resolved tabs control which bars render
+- `TicketsByTypeChart` now uses `chartPalette()` for colors; internal Top 5/Top 8/All toggle creates an "Other" bucket; Count/% toggle switches slice labels between absolute and percentage
+- `TicketsByPriorityChart` fully rewritten from Recharts `BarChart` to a custom Tailwind component — horizontal stacked bar (`flex h-3 rounded-full overflow-hidden`) + breakdown list; All/Open/In Progress/Resolved filter tabs change the displayed metric per priority row
+- `ResolutionHistogramChart` at `src/components/charts/ResolutionHistogramChart.tsx` — Recharts stacked `BarChart` with priority-colored stacks; Fine/Standard/Coarse granularity toggle; fine bins (10 buckets from `< 30m` to `24h+`) returned by backend, merged client-side for Standard (6 bins) and Coarse (3 bins)
+- `HistogramRow` type and histogram query added to `getResponseTimeAll` in `response-time.ts` — uses `withRLS` + CASE bucketing on `EXTRACT(EPOCH FROM (resolved_at - created_at))` grouped by priority and bin index; 4th parallel query in the `Promise.all`
+- `ResolutionComparisonChart.tsx` deleted — replaced by `ResolutionHistogramChart` in `ResponseTimeContent`
 
 _(append here after each phase)_
 

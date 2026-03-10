@@ -1,16 +1,28 @@
 'use client';
 
+import { useState, useMemo } from 'react';
 import {
   ResponsiveContainer,
-  LineChart,
-  Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   Legend,
 } from 'recharts';
+import { useChartTheme } from '@/hooks/use-chart-theme';
+import { tooltipStyle } from '@/components/charts/ChartTooltip';
+import { ChartTabs } from '@/components/charts/ChartTabs';
 import type { TicketsOverTimeRow } from '@/lib/queries/dashboard';
+
+type View = 'all' | 'created' | 'resolved';
+
+const VIEW_OPTIONS: { value: View; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'created', label: 'Created' },
+  { value: 'resolved', label: 'Resolved' },
+];
 
 function formatMonth(dateStr: string): string {
   const [year, month] = dateStr.split('-');
@@ -19,45 +31,56 @@ function formatMonth(dateStr: string): string {
 }
 
 export function TicketsOverTimeChart({ data }: { data: TicketsOverTimeRow[] }) {
-  const chartData = data.map((r) => ({
-    ...r,
-    monthLabel: formatMonth(r.month),
-  }));
+  const [view, setView] = useState<View>('all');
+  const colors = useChartTheme();
+
+  const chartData = useMemo(
+    () => data.map((r) => ({ ...r, monthLabel: formatMonth(r.month) })),
+    [data],
+  );
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-        <XAxis dataKey="monthLabel" tick={{ fontSize: 12 }} tickLine={false} />
-        <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} width={45} />
-        <Tooltip
-          contentStyle={{
-            background: '#ffffff',
-            border: '1px solid #e2e8f0',
-            borderRadius: '6px',
-            fontSize: 12,
-          }}
-        />
-        <Legend wrapperStyle={{ fontSize: 12 }} />
-        <Line
-          type="monotone"
-          dataKey="created"
-          name="Created"
-          stroke="#3b82f6"
-          strokeWidth={2}
-          dot={false}
-          activeDot={{ r: 4 }}
-        />
-        <Line
-          type="monotone"
-          dataKey="resolved"
-          name="Resolved"
-          stroke="#22c55e"
-          strokeWidth={2}
-          dot={false}
-          activeDot={{ r: 4 }}
-        />
-      </LineChart>
-    </ResponsiveContainer>
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <ChartTabs value={view} onChange={setView} options={VIEW_OPTIONS} />
+      </div>
+      <ResponsiveContainer width="100%" height={300}>
+        <BarChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} vertical={false} />
+          <XAxis
+            dataKey="monthLabel"
+            tick={{ fontSize: 12, fill: colors.axis }}
+            tickLine={false}
+            axisLine={false}
+          />
+          <YAxis
+            tick={{ fontSize: 12, fill: colors.axis }}
+            tickLine={false}
+            axisLine={false}
+            width={45}
+          />
+          <Tooltip contentStyle={tooltipStyle(colors)} />
+          <Legend wrapperStyle={{ fontSize: 12 }} />
+          {(view === 'all' || view === 'created') && (
+            <Bar
+              dataKey="created"
+              name="Created"
+              fill={colors.created}
+              radius={view === 'created' ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+              maxBarSize={32}
+            />
+          )}
+          {(view === 'all' || view === 'resolved') && (
+            <Bar
+              dataKey="resolved"
+              name="Resolved"
+              fill={colors.resolved}
+              radius={[4, 4, 0, 0]}
+              maxBarSize={32}
+            />
+          )}
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
   );
 }

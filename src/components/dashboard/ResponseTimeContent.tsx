@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/table';
 import { FilterBar } from '@/components/filters/FilterBar';
 import { KpiCard } from '@/components/dashboard/KpiCard';
-import { ResolutionComparisonChart } from '@/components/charts/ResolutionComparisonChart';
+import { ResolutionHistogramChart } from '@/components/charts/ResolutionHistogramChart';
 import { OverdueTicketsTable } from '@/components/dashboard/OverdueTicketsTable';
 import { useFilterState } from '@/hooks/use-filter-state';
 import { getResponseTimeAll } from '@/lib/queries/response-time';
@@ -174,16 +174,16 @@ function Inner() {
         </CardContent>
       </Card>
 
-      {/* ── Comparison Chart ── */}
+      {/* ── Resolution Histogram ── */}
       <Card>
         <CardHeader>
-          <CardTitle>Actual vs Expected Resolution Time</CardTitle>
+          <CardTitle>Resolution Time Distribution</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <Skeleton className="h-[280px] w-full" />
           ) : (
-            <ResolutionComparisonChart data={sorted} />
+            <ResolutionHistogramChart data={data?.histogram ?? []} />
           )}
         </CardContent>
       </Card>
