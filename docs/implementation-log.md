@@ -1,5 +1,9 @@
 # Implementation Log
 
+## UI Overhaul Phase 6: Dashboard Page Layout
+
+Extended `getDashboardAll` in `dashboard.ts` to include distribution data — 4 queries now run in a single `Promise.all` (summary RLS fn, ticketsOverTime RLS fn, byType withRLS, byPriority withRLS), sharing one `getUserContext()` call. `DashboardAllWithComparison` type updated to carry `byType` and `byPriority`; `getDashboardAllWithComparison` passes them through. `DashboardContent.tsx` restructured into the new 3-section layout: KPI grid → 2-col chart row (`TicketsOverTimeChart` at `lg:col-span-2` + `TicketsByTypeChart` at `lg:col-span-1`) → full-width `TicketsByPriorityChart`; single `useQuery` with updated key `all-with-distributions` covers all data. Distribution page left untouched (still uses `getDistributionAll`) until Phase 11 cleanup.
+
 ## UI Overhaul Phase 4: KPI Cards + Comparison Backend
 
 Created `KpiCard.tsx` — a reusable card with label, large formatted value, optional trend badge (▲/▼ with `text-success`/`text-destructive` coloring), and a `positiveIsGood` prop to invert color logic for metrics where lower is better. Added `getDashboardAllWithComparison()` to `dashboard.ts`, which shifts the current date range backward by its own duration to compute a previous period, then fires both periods in parallel; `DashboardContent` now renders 4 `KpiCard` components in a `grid-cols-2 lg:grid-cols-4` grid with period-over-period trend deltas. Extended `getResponseTimeAll` with a third parallel `withRLS` query computing overall resolved count, avg hours, and median hours (via `PERCENTILE_CONT`); `ResponseTimeContent` migrated from two separate `useQuery` calls to one and gained 4 KPI cards at the top. Fixed a long-standing bug where `get_dashboard_summary_rls` counted only `status = 'open'` (1.9k) instead of `open + in_progress` (12.9k) for the active tickets KPI — updated the function and redeployed to Supabase.

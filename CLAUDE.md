@@ -25,7 +25,7 @@ Full plan: `docs/ui-overhaul-plan.md` — do NOT deviate from phase order withou
 - [x] Phase 3 — Filter Bar Redesign
 - [x] Phase 8 — Badges + Status Colors (done early, quick wins)
 - [x] Phase 4 — KPI Cards + Comparison Backend
-- [ ] Phase 6 — Dashboard Page Layout
+- [x] Phase 6 — Dashboard Page Layout
 - [ ] Phase 5 — Chart Upgrades
 - [ ] Phase 7 — Response Time Page Overhaul
 - [ ] Phase 10 — Portal & Auth Polish
@@ -158,6 +158,10 @@ Examples of good entries:
 - `getDashboardAllWithComparison(filters)` in `src/lib/queries/dashboard.ts` — computes previous period via `computePreviousFilters` (shifts `range` by same duration, `exact` by 1 day; returns `null` for unbounded operators) then runs current + previous in parallel; returns `{ summary, ticketsOverTime, previousSummary: DashboardSummary | null }`
 - `ResponseTimeAll` now includes `summary: ResolutionSummaryStats` — added as a third parallel `withRLS` query inside `getResponseTimeAll`; computes resolved count, avg hours, and median hours via `PERCENTILE_CONT(0.5)` on `resolved_at - created_at`; `ResponseTimeContent` migrated to single `useQuery` calling `getResponseTimeAll`
 - `get_dashboard_summary_rls` `open_tickets` column now counts `status IN ('open', 'in_progress')` — previous count of `status = 'open'` only was 1.9k vs actual ~12.9k active tickets; KPI label changed to "OPEN TICKETS" (showing open+in_progress)
+
+- `getDashboardAll` now returns `byType: TicketsByTypeRow[]` and `byPriority: TicketsByPriorityRow[]` in addition to `summary` and `ticketsOverTime` — 4 queries run in one `Promise.all`; `getDashboardAllWithComparison` passes distribution data through
+- `DashboardContent` query key changed from `'all-with-comparison'` to `'all-with-distributions'` — update any cache invalidation that references the old key
+- Distribution page (`src/app/(main)/distribution/page.tsx`) still uses `getDistributionAll` independently — do NOT remove until Phase 11
 
 _(append here after each phase)_
 

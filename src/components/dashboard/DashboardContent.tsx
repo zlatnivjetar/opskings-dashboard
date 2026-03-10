@@ -7,10 +7,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { FilterBar } from '@/components/filters/FilterBar';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { TicketsOverTimeChart } from '@/components/charts/TicketsOverTimeChart';
+import { TicketsByTypeChart } from '@/components/charts/TicketsByTypeChart';
+import { TicketsByPriorityChart } from '@/components/charts/TicketsByPriorityChart';
 import { useFilterState } from '@/hooks/use-filter-state';
 import { getDashboardAllWithComparison } from '@/lib/queries/dashboard';
 import { formatCompact, formatHours } from '@/lib/format';
-import type { DashboardSummary, TicketsOverTimeRow } from '@/lib/queries/dashboard';
+import type { DashboardSummary, TicketsOverTimeRow, TicketsByTypeRow, TicketsByPriorityRow } from '@/lib/queries/dashboard';
 
 function computeTrend(
   current: number,
@@ -96,22 +98,81 @@ function KpiCards({
   );
 }
 
-function TicketsChart({
-  data,
+function ChartsSkeleton() {
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <Card className="lg:col-span-2">
+        <CardHeader><CardTitle>Tickets Over Time</CardTitle></CardHeader>
+        <CardContent><Skeleton className="h-[300px] w-full" /></CardContent>
+      </Card>
+      <Card className="lg:col-span-1">
+        <CardHeader><CardTitle>Tickets by Type</CardTitle></CardHeader>
+        <CardContent><Skeleton className="h-[300px] w-full" /></CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function ChartsRow({
+  ticketsOverTime,
+  byType,
   isLoading,
 }: {
-  data: TicketsOverTimeRow[] | undefined;
+  ticketsOverTime: TicketsOverTimeRow[] | undefined;
+  byType: TicketsByTypeRow[] | undefined;
   isLoading: boolean;
 }) {
-  if (isLoading) return <Skeleton className="h-[300px] w-full" />;
-  return <TicketsOverTimeChart data={data ?? []} />;
+  if (isLoading) return <ChartsSkeleton />;
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <Card className="lg:col-span-2">
+        <CardHeader>
+          <CardTitle>Tickets Over Time</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <TicketsOverTimeChart data={ticketsOverTime ?? []} />
+        </CardContent>
+      </Card>
+      <Card className="lg:col-span-1">
+        <CardHeader>
+          <CardTitle>Tickets by Type</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <TicketsByTypeChart data={byType ?? []} />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function PrioritySection({
+  byPriority,
+  isLoading,
+}: {
+  byPriority: TicketsByPriorityRow[] | undefined;
+  isLoading: boolean;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Tickets by Priority</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <Skeleton className="h-[300px] w-full" />
+        ) : (
+          <TicketsByPriorityChart data={byPriority ?? []} />
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 function Inner() {
   const { filters } = useFilterState();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['dashboard', 'all-with-comparison', filters],
+    queryKey: ['dashboard', 'all-with-distributions', filters],
     queryFn: () => getDashboardAllWithComparison(filters),
     staleTime: 30_000,
   });
@@ -127,14 +188,13 @@ function Inner() {
 
       <KpiCards summary={data?.summary} previous={data?.previousSummary} />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Tickets Over Time</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <TicketsChart data={data?.ticketsOverTime} isLoading={isLoading} />
-        </CardContent>
-      </Card>
+      <ChartsRow
+        ticketsOverTime={data?.ticketsOverTime}
+        byType={data?.byType}
+        isLoading={isLoading}
+      />
+
+      <PrioritySection byPriority={data?.byPriority} isLoading={isLoading} />
     </div>
   );
 }

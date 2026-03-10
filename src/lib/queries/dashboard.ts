@@ -208,15 +208,22 @@ export async function getTicketsByPriority(filters: FilterState): Promise<Ticket
   });
 }
 
-// Combined action — one HTTP round-trip, both queries run in parallel via Promise.all.
+// Combined action — one HTTP round-trip, all queries run in parallel via Promise.all.
 // Replaces the two-separate-useQuery pattern that Next.js serialises.
 export async function getDashboardAll(
   filters: FilterState,
-): Promise<{ summary: DashboardSummary; ticketsOverTime: TicketsOverTimeRow[] }> {
+): Promise<{
+  summary: DashboardSummary;
+  ticketsOverTime: TicketsOverTimeRow[];
+  byType: TicketsByTypeRow[];
+  byPriority: TicketsByPriorityRow[];
+}> {
   const ctx = await getUserContext();
   const p = toRLSParams(filters);
+  const distFilters: FilterState = { date: filters.date, teamMember: filters.teamMember };
+  const whereClause = applyTicketFilters([], distFilters);
 
-  const [summaryRows, timeRows] = await Promise.all([
+  const [summaryRows, timeRows, byTypeRows, byPriorityRows] = await Promise.all([
     adminDb.execute<{
       total_tickets: number;
       open_tickets: number;
@@ -244,9 +251,38 @@ export async function getDashboardAll(
         ${p.priorityInclude}::text[], ${p.priorityExclude}::text[]
       )
     `),
+    withRLS(ctx, (tx) =>
+      tx
+        .select({
+          ticketTypeId: ticketTypes.id,
+          typeName: ticketTypes.typeName,
+          count: sql<number>`COUNT(*)::int`,
+        })
+        .from(tickets)
+        .innerJoin(ticketTypes, eq(tickets.ticketTypeId, ticketTypes.id))
+        .where(whereClause)
+        .groupBy(ticketTypes.id, ticketTypes.typeName)
+        .orderBy(desc(sql`COUNT(*)`)),
+    ),
+    withRLS(ctx, (tx) =>
+      tx
+        .select({
+          priority: tickets.priority,
+          open: sql<number>`SUM(CASE WHEN status = 'open' THEN 1 ELSE 0 END)::int`,
+          in_progress: sql<number>`SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END)::int`,
+          resolved: sql<number>`SUM(CASE WHEN status = 'resolved' THEN 1 ELSE 0 END)::int`,
+        })
+        .from(tickets)
+        .where(whereClause)
+        .groupBy(tickets.priority)
+        .orderBy(
+          sql`CASE priority WHEN 'low' THEN 1 WHEN 'medium' THEN 2 WHEN 'high' THEN 3 WHEN 'urgent' THEN 4 ELSE 5 END`,
+        ),
+    ),
   ]);
 
   const sr = summaryRows[0];
+  const total = byTypeRows.reduce((s, r) => s + r.count, 0);
   return {
     summary: {
       totalTickets: sr.total_tickets ?? 0,
@@ -256,6 +292,18 @@ export async function getDashboardAll(
       avgRating: sr.avg_rating != null ? Number(sr.avg_rating) : null,
     },
     ticketsOverTime: timeRows.map((r) => ({ month: r.month, created: r.created, resolved: r.resolved })),
+    byType: byTypeRows.map((r) => ({
+      ticketTypeId: r.ticketTypeId,
+      typeName: r.typeName,
+      count: r.count,
+      percentage: total > 0 ? Math.round((r.count / total) * 1000) / 10 : 0,
+    })),
+    byPriority: byPriorityRows.map((r) => ({
+      priority: r.priority ?? 'unknown',
+      open: r.open ?? 0,
+      in_progress: r.in_progress ?? 0,
+      resolved: r.resolved ?? 0,
+    })),
   };
 }
 
@@ -299,6 +347,8 @@ export type DashboardAllWithComparison = {
   summary: DashboardSummary;
   ticketsOverTime: TicketsOverTimeRow[];
   previousSummary: DashboardSummary | null;
+  byType: TicketsByTypeRow[];
+  byPriority: TicketsByPriorityRow[];
 };
 
 export async function getDashboardAllWithComparison(
@@ -313,6 +363,8 @@ export async function getDashboardAllWithComparison(
     summary: current.summary,
     ticketsOverTime: current.ticketsOverTime,
     previousSummary: previous,
+    byType: current.byType,
+    byPriority: current.byPriority,
   };
 }
 
