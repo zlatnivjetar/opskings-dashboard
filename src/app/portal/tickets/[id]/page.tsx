@@ -2,27 +2,10 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getTicketDetail } from '@/lib/queries/portal';
 import { formatUsername, formatDate } from '@/lib/format';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { FeedbackForm } from '@/components/portal/FeedbackForm';
-import { STATUS_STYLES, PRIORITY_STYLES } from '@/lib/status-styles';
-
-function StatusBadge({ status }: { status: string }) {
-  const label = status === 'in_progress' ? 'in progress' : status;
-  return (
-    <Badge variant="secondary" className={STATUS_STYLES[status] ?? ''}>
-      {label}
-    </Badge>
-  );
-}
-
-function PriorityBadge({ priority }: { priority: string }) {
-  return (
-    <Badge variant="secondary" className={PRIORITY_STYLES[priority] ?? ''}>
-      {priority}
-    </Badge>
-  );
-}
+import { PriorityBadge } from '@/components/ui/priority-badge';
+import { StatusBadge } from '@/components/ui/status-badge';
 
 export default async function TicketDetailPage({
   params,

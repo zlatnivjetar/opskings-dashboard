@@ -12,7 +12,7 @@ import {
   Legend,
 } from 'recharts';
 import { useChartTheme } from '@/hooks/use-chart-theme';
-import { tooltipStyle } from '@/components/charts/ChartTooltip';
+import { makeTooltip } from '@/components/charts/ChartTooltip';
 import { ChartTabs } from '@/components/charts/ChartTabs';
 import { formatCompact } from '@/lib/format';
 import type { HistogramRow } from '@/lib/queries/response-time';
@@ -116,7 +116,7 @@ export function ResolutionHistogramChart({ data }: { data: HistogramRow[] }) {
             axisLine={false}
             width={45}
           />
-          <Tooltip contentStyle={tooltipStyle(colors)} />
+          <Tooltip content={makeTooltip(colors)} />
           <Legend wrapperStyle={{ fontSize: 11 }} />
           <Bar dataKey="low" name="Low" stackId="a" fill={colors.low} />
           <Bar dataKey="medium" name="Medium" stackId="a" fill={colors.medium} />

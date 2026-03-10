@@ -10,7 +10,7 @@ import {
   Legend,
 } from 'recharts';
 import { useChartTheme, chartPalette } from '@/hooks/use-chart-theme';
-import { tooltipStyle } from '@/components/charts/ChartTooltip';
+import { makeTooltip } from '@/components/charts/ChartTooltip';
 import { ChartTabs } from '@/components/charts/ChartTabs';
 import type { TicketsByTypeRow } from '@/lib/queries/dashboard';
 
@@ -111,12 +111,11 @@ export function TicketsByTypeChart({ data }: { data: TicketsByTypeRow[] }) {
             ))}
           </Pie>
           <Tooltip
-            formatter={(value, name) => {
+            content={makeTooltip(colors, (value, _name, entry) => {
               const v = value as number;
-              const row = slicedData.find((r) => r.typeName === (name as string));
-              return [`${v.toLocaleString()} (${row?.percentage.toFixed(1)}%)`, name as string];
-            }}
-            contentStyle={tooltipStyle(colors)}
+              const pct = entry.payload?.percentage as number | undefined;
+              return `${v.toLocaleString()}${pct != null ? ` (${pct.toFixed(1)}%)` : ''}`;
+            })}
           />
           <Legend
             wrapperStyle={{ fontSize: 11, paddingTop: 8 }}

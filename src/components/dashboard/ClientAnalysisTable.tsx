@@ -10,8 +10,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { PlanBadge } from '@/components/ui/plan-badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -19,7 +19,6 @@ import {
   type ClientAnalysisRow,
   type SortableColumn,
 } from '@/lib/queries/clients';
-import { PLAN_STYLES } from '@/lib/status-styles';
 
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat('en-US', {
@@ -163,17 +162,11 @@ export function ClientAnalysisTable() {
               </TableRow>
             ) : (
               pageRows.map((row) => {
-                const plan = PLAN_STYLES[row.planType] ?? {
-                  label: row.planType,
-                  className: 'bg-muted text-muted-foreground',
-                };
                 return (
                   <TableRow key={row.id}>
                     <TableCell className="font-medium">{row.clientName}</TableCell>
                     <TableCell>
-                      <Badge variant="outline" className={plan.className}>
-                        {plan.label}
-                      </Badge>
+                      <PlanBadge plan={row.planType} />
                     </TableCell>
                     <TableCell>{row.totalTickets.toLocaleString()}</TableCell>
                     <TableCell>{row.openTickets.toLocaleString()}</TableCell>

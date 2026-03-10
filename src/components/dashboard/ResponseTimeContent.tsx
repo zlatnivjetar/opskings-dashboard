@@ -4,7 +4,7 @@ import { Suspense, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
+import { PriorityBadge } from '@/components/ui/priority-badge';
 import {
   Table,
   TableBody,
@@ -20,7 +20,6 @@ import { OverdueTicketsTable } from '@/components/dashboard/OverdueTicketsTable'
 import { useFilterState } from '@/hooks/use-filter-state';
 import { getResponseTimeAll } from '@/lib/queries/response-time';
 import { formatCompact, formatHours } from '@/lib/format';
-import { PRIORITY_STYLES } from '@/lib/status-styles';
 
 const RT_FILTERS = ['date', 'teamMember'] as const;
 const PRIORITY_ORDER = ['low', 'medium', 'high', 'urgent'];
@@ -35,8 +34,8 @@ function VarianceBadge({ actual, expected }: { actual: number; expected: number 
   const over = diff > 0;
   return (
     <span
-      className={`inline-flex items-center gap-1 font-medium ${
-        over ? 'text-destructive' : 'text-success'
+      className={`inline-flex items-center gap-1 font-bold ${
+        !over ? 'text-success' : ''
       }`}
     >
       {over ? '+' : ''}
@@ -192,17 +191,12 @@ function Inner() {
                       return (
                         <TableRow key={row.priority}>
                           <TableCell className="pl-6">
-                            <Badge
-                              variant="secondary"
-                              className={PRIORITY_STYLES[row.priority] ?? ''}
-                            >
-                              {row.priority.charAt(0).toUpperCase() + row.priority.slice(1)}
-                            </Badge>
+                            <PriorityBadge priority={row.priority} />
                           </TableCell>
                           <TableCell className="text-right font-mono text-sm">
                             {formatCompact(resolved)}
                           </TableCell>
-                          <TableCell className="text-right font-mono text-sm text-destructive">
+                          <TableCell className="text-right font-mono text-sm font-bold">
                             {overdueCount > 0
                               ? `${formatCompact(overdueCount)}${pctStr}`
                               : '—'}

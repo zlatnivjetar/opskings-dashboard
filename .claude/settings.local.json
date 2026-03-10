@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la \"C:\\\\Users\\\\david\\\\Desktop\\\\opskings-dashboard\\\\src\\\\app\\\\\\(main\\)\\\\dashboard\"\")",
+      "Bash(find \"C:\\\\Users\\\\david\\\\Desktop\\\\opskings-dashboard\\\\src\\\\app\\\\\\(main\\)\" -type f -name \"*.tsx\")",
+      "Bash(cat \"/c/Users/david/Desktop/opskings-dashboard/src/app/\\(main\\)/dashboard/page.tsx\")",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(where npx)",
+      "Bash(where node)"
+    ]
+  }
+}

@@ -4,7 +4,6 @@ import { auth } from '@/lib/auth';
 import { getUserContext } from '@/lib/auth/get-user-context';
 import { SignOutButton } from '@/components/portal/SignOutButton';
 import { SidebarNav } from './SidebarNav';
-import { ThemeToggle } from './ThemeToggle';
 
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/);
@@ -25,14 +24,13 @@ export async function Sidebar() {
   return (
     <aside className="flex flex-col w-64 h-screen bg-sidebar border-r border-sidebar-border shrink-0 sticky top-0">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-sidebar-border">
+      <div className="flex items-center px-4 py-3 border-b border-sidebar-border">
         <div className="flex items-center gap-2">
           <div className="flex items-center justify-center w-7 h-7 rounded-md bg-primary text-primary-foreground">
             <Crown className="size-4" />
           </div>
           <span className="font-semibold text-sm text-sidebar-foreground">OpsKings</span>
         </div>
-        <ThemeToggle />
       </div>
 
       {/* Nav */}

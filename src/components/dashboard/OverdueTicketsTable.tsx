@@ -9,11 +9,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PriorityBadge } from '@/components/ui/priority-badge';
 import type { OverdueTicketRow } from '@/lib/queries/response-time';
-import { PRIORITY_STYLES } from '@/lib/status-styles';
 import { formatDate } from '@/lib/format';
 
 function fmt(hours: number): string {
@@ -86,12 +85,7 @@ export function OverdueTicketsTable({
                   <TableCell className="whitespace-nowrap text-caption">{formatDate(row.createdAt)}</TableCell>
                   <TableCell className="whitespace-nowrap">{row.typeName}</TableCell>
                   <TableCell>
-                    <Badge
-                      variant="secondary"
-                      className={PRIORITY_STYLES[row.priority] ?? ''}
-                    >
-                      {row.priority.charAt(0).toUpperCase() + row.priority.slice(1)}
-                    </Badge>
+                    <PriorityBadge priority={row.priority} />
                   </TableCell>
                   <TableCell className="text-right font-mono text-sm">
                     {fmt(row.actualHours)}
@@ -99,7 +93,7 @@ export function OverdueTicketsTable({
                   <TableCell className="text-right font-mono text-sm text-muted-foreground">
                     {fmt(row.expectedHours)}
                   </TableCell>
-                  <TableCell className="text-right font-mono text-sm font-semibold text-destructive">
+                  <TableCell className="text-right font-mono text-sm font-bold">
                     +{fmt(row.excessHours)}
                   </TableCell>
                 </TableRow>

@@ -1,18 +1,22 @@
+// Dot color classes for priority/status/plan badge indicators
+
 export const PRIORITY_STYLES: Record<string, string> = {
-  low: 'bg-muted text-muted-foreground',
-  medium: 'bg-warning/15 text-warning-foreground dark:bg-warning/20 dark:text-warning',
-  high: 'bg-destructive/15 text-destructive dark:bg-destructive/20',
-  urgent: 'bg-destructive/25 text-destructive font-semibold dark:bg-destructive/30',
+  urgent: 'bg-blue-900 dark:bg-blue-100',
+  high:   'bg-blue-600 dark:bg-blue-400',
+  medium: 'bg-blue-300 dark:bg-blue-500',
+  low:    'bg-blue-200 dark:bg-blue-700',
 };
 
 export const STATUS_STYLES: Record<string, string> = {
-  open: 'bg-info/15 text-info dark:bg-info/20',
-  in_progress: 'bg-warning/15 text-warning-foreground dark:bg-warning/20 dark:text-warning',
-  resolved: 'bg-success/15 text-success dark:bg-success/20',
+  open:        'bg-slate-400',
+  in_progress: 'bg-amber-400',
+  resolved:    'bg-emerald-400',
+  active:      'bg-emerald-400',
+  inactive:    'bg-slate-400',
 };
 
-export const PLAN_STYLES: Record<string, { label: string; className: string }> = {
-  starter: { label: 'Starter', className: 'bg-muted text-muted-foreground' },
-  professional: { label: 'Professional', className: 'bg-info/15 text-info' },
-  enterprise: { label: 'Enterprise', className: 'bg-primary/15 text-primary' },
+export const PLAN_STYLES: Record<string, { label: string; dot: string }> = {
+  starter:      { label: 'Starter',      dot: 'bg-slate-400 dark:bg-slate-500' },
+  professional: { label: 'Professional', dot: 'bg-blue-300 dark:bg-blue-500' },
+  enterprise:   { label: 'Enterprise',   dot: 'bg-blue-600 dark:bg-blue-400' },
 };

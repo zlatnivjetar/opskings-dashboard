@@ -12,7 +12,7 @@ import {
   Legend,
 } from 'recharts';
 import { useChartTheme } from '@/hooks/use-chart-theme';
-import { tooltipStyle } from '@/components/charts/ChartTooltip';
+import { makeTooltip } from '@/components/charts/ChartTooltip';
 import { ChartTabs } from '@/components/charts/ChartTabs';
 import type { TicketsOverTimeRow } from '@/lib/queries/dashboard';
 
@@ -59,14 +59,14 @@ export function TicketsOverTimeChart({ data }: { data: TicketsOverTimeRow[] }) {
             axisLine={false}
             width={45}
           />
-          <Tooltip contentStyle={tooltipStyle(colors)} />
+          <Tooltip content={makeTooltip(colors)} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
           {(view === 'all' || view === 'created') && (
             <Bar
               dataKey="created"
               name="Created"
               fill={colors.created}
-              radius={view === 'created' ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+              radius={[4, 4, 0, 0]}
               maxBarSize={32}
             />
           )}

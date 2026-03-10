@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { getTeamPerformance, type TeamPerformanceRow } from '@/lib/queries/team';
@@ -209,14 +210,7 @@ export function TeamPerformanceTable() {
         accessorKey: 'status',
         header: 'Status',
         filterFn: 'includesString',
-        cell: ({ getValue }) => {
-          const v = getValue<string>();
-          return (
-            <Badge variant={v === 'active' ? 'default' : 'secondary'} className="capitalize">
-              {v}
-            </Badge>
-          );
-        },
+        cell: ({ getValue }) => <StatusBadge status={getValue<string>()} />,
       },
     ],
     [topPerformerId]
