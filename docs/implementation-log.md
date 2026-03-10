@@ -1,5 +1,9 @@
 # Implementation Log
 
+## UI Overhaul Phase 11: Distribution Page Removal + Cleanup
+
+Deleted `src/app/(main)/distribution/page.tsx` and `src/components/filters/FilterBadge.tsx` (confirmed no remaining imports). Removed the "Support > Tickets" category from `SidebarNav.tsx`, leaving team members with only the "General" nav group. Added a `/distribution` → `/dashboard` redirect in `middleware.ts` for any bookmarked URLs. Removed `getDistributionAll` from `src/lib/queries/dashboard.ts` — its only consumer was the now-deleted distribution page; the dashboard's `getDashboardAll` already fetches the same data inline. `ResolutionComparisonChart.tsx` was already absent (deleted in Phase 5). `tsc --noEmit` and `npm run lint` both pass clean.
+
 ## UI Overhaul Phase 9: Motion Polish
 
 Installed `motion` (Framer Motion v11+) and applied micro-interactions to four surfaces. Created `MotionMain` client component wrapping `<main>` with `AnimatePresence mode="wait"` keyed on `usePathname()` — imported by both `(main)/layout.tsx` and `portal/layout.tsx` as RSC can pass children as opaque nodes into client components. Replaced `SidebarNav`'s CSS `border-l-2` active indicator with a `motion.span layoutId="active-bg"` spring-animated background sliding between items inside a `LayoutGroup`. Added rotate+fade `AnimatePresence` icon swap to `ThemeToggle` with `initial={false}` to suppress animation on first load. Converted `KpiCard` to a client component and wrapped it in a `motion.div` with fade-up entry (`opacity: 0, y: 8 → 0`); `DashboardContent` passes `delay={0/0.05/0.1/0.15}` for staggered card entry. The `motion` runtime handles `prefers-reduced-motion` automatically. Files touched: `MotionMain.tsx` (new), `SidebarNav.tsx`, `ThemeToggle.tsx`, `KpiCard.tsx`, `DashboardContent.tsx`, `(main)/layout.tsx`, `portal/layout.tsx`.

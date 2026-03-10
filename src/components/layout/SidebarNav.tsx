@@ -20,12 +20,6 @@ const TEAM_MEMBER_CATEGORIES: NavCategory[] = [
       { href: '/clients', label: 'Clients', icon: Building2 },
     ],
   },
-  {
-    category: 'Support',
-    items: [
-      { href: '/distribution', label: 'Tickets', icon: Ticket },
-    ],
-  },
 ];
 
 const CLIENT_CATEGORIES: NavCategory[] = [

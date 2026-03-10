@@ -52,6 +52,11 @@ export async function middleware(request: NextRequest) {
     );
   }
 
+  // Redirect removed distribution page to dashboard
+  if (pathname === '/distribution') {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
   if (role === 'team_member' && pathname.startsWith('/portal')) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
