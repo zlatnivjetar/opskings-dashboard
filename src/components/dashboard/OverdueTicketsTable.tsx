@@ -75,7 +75,7 @@ export function OverdueTicketsTable({
             ) : (
               pageRows.map((row) => (
                 <TableRow key={row.ticketId}>
-                  <TableCell className="font-mono text-sm text-muted-foreground">
+                  <TableCell className="text-sm text-muted-foreground">
                     #{row.ticketId}
                   </TableCell>
                   <TableCell className="max-w-[220px] truncate" title={row.title}>
@@ -87,13 +87,13 @@ export function OverdueTicketsTable({
                   <TableCell>
                     <PriorityBadge priority={row.priority} />
                   </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
+                  <TableCell className="text-right text-sm">
                     {fmt(row.actualHours)}
                   </TableCell>
-                  <TableCell className="text-right font-mono text-sm text-muted-foreground">
+                  <TableCell className="text-right text-sm text-muted-foreground">
                     {fmt(row.expectedHours)}
                   </TableCell>
-                  <TableCell className="text-right font-mono text-sm font-bold">
+                  <TableCell className="text-right text-sm font-bold">
                     +{fmt(row.excessHours)}
                   </TableCell>
                 </TableRow>
