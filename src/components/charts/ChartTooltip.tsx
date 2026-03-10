@@ -23,7 +23,7 @@ interface Entry {
 interface TooltipContentProps {
   active?: boolean;
   payload?: readonly Entry[];
-  label?: string;
+  label?: string | number;
 }
 
 type ValueFormatter = (value: number | string, name: string, entry: Entry) => string;
