@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,7 +16,13 @@ type FilterKey = keyof FilterState;
 
 const ALL_FILTER_KEYS: FilterKey[] = ['date', 'teamMember', 'ticketType', 'priority'];
 
-export function FilterBar({ allowedFilters }: { allowedFilters?: FilterKey[] }) {
+export function FilterBar({
+  allowedFilters,
+  actions,
+}: {
+  allowedFilters?: FilterKey[];
+  actions?: React.ReactNode;
+}) {
   const { filters, setFilter, removeFilter, clearFilters } = useFilterState();
   const allowedKeys = allowedFilters ?? ALL_FILTER_KEYS;
 
@@ -99,16 +106,21 @@ export function FilterBar({ allowedFilters }: { allowedFilters?: FilterKey[] }) 
         />
       )}
 
-      {hasAnyFilter && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-9 px-3 text-muted-foreground hover:text-foreground ml-auto"
-          onClick={clearFilters}
-        >
-          <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
-          Reset
-        </Button>
+      {(hasAnyFilter || actions) && (
+        <div className="ml-auto flex items-center gap-2">
+          {hasAnyFilter && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-9 px-3 text-muted-foreground hover:text-foreground"
+              onClick={clearFilters}
+            >
+              <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+              Reset
+            </Button>
+          )}
+          {actions}
+        </div>
       )}
     </div>
   );

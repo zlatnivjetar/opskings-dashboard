@@ -29,10 +29,18 @@ const LABEL_OPTIONS: { value: LabelMode; label: string }[] = [
 
 const RADIAN = Math.PI / 180;
 
-function makeLabel(mode: LabelMode, foreground: string) {
+/** Returns true if the hex color is light enough to need dark (black) text. */
+function isLightFill(hex: string): boolean {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.55;
+}
+
+function makeLabel(mode: LabelMode, palette: string[]) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return function renderLabel(props: any) {
-    const { cx, cy, midAngle, innerRadius, outerRadius, percentage, value } = props as {
+    const { cx, cy, midAngle, innerRadius, outerRadius, percentage, value, index } = props as {
       cx: number;
       cy: number;
       midAngle: number;
@@ -40,17 +48,20 @@ function makeLabel(mode: LabelMode, foreground: string) {
       outerRadius: number;
       percentage: number;
       value: number;
+      index: number;
     };
     if (percentage < 4) return null;
     const radius = innerRadius + (outerRadius - innerRadius) * 0.55;
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
     const y = cy + radius * Math.sin(-midAngle * RADIAN);
+    const fill = palette[index] ?? '#1e3a8a';
+    const textColor = isLightFill(fill) ? '#000000' : '#ffffff';
     const text = mode === 'pct' ? `${percentage.toFixed(1)}%` : value.toLocaleString();
     return (
       <text
         x={x}
         y={y}
-        fill={foreground}
+        fill={textColor}
         textAnchor="middle"
         dominantBaseline="central"
         fontSize={11}
@@ -87,8 +98,6 @@ export function TicketsByTypeChart({ data }: { data: TicketsByTypeRow[] }) {
     [colors, slicedData.length],
   );
 
-  const labelForeground = colors.tooltipText === '#f3f4f6' ? '#f3f4f6' : '#ffffff';
-
   return (
     <div>
       <div className="flex items-center justify-between gap-2 mb-2">
@@ -104,10 +113,10 @@ export function TicketsByTypeChart({ data }: { data: TicketsByTypeRow[] }) {
             innerRadius={55}
             outerRadius={105}
             labelLine={false}
-            label={makeLabel(labelMode, labelForeground)}
+            label={makeLabel(labelMode, palette)}
           >
             {slicedData.map((_, i) => (
-              <Cell key={i} fill={palette[i]} />
+              <Cell key={i} fill={palette[i]} stroke={colors.tooltipBorder} strokeWidth={1} />
             ))}
           </Pie>
           <Tooltip

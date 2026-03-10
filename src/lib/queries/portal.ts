@@ -1,9 +1,12 @@
 'use server';
 
-import { sql } from 'drizzle-orm';
+import { sql, eq, desc } from 'drizzle-orm';
 import { adminDb } from '@/lib/db';
 import { withRLS } from '@/lib/db/rls-client';
 import { getUserContext } from '@/lib/auth/get-user-context';
+import { applyTicketFilters } from '@/lib/queries/filters';
+import { tickets, ticketTypes } from '@/lib/db/schema';
+import type { FilterState } from '@/types/filters';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -66,46 +69,47 @@ function toIso(val: unknown): string {
 export async function getMyTickets(params?: {
   page?: number;
   pageSize?: number;
+  filters?: FilterState;
 }): Promise<TicketListResult> {
   const ctx = await getUserContext();
-  const { page = 1, pageSize = 20 } = params ?? {};
+  const { page = 1, pageSize = 20, filters = {} } = params ?? {};
   const offset = (page - 1) * pageSize;
 
   return withRLS(ctx, async (tx) => {
-    const rows = await tx.execute<{
-      id: number;
-      title: string;
-      type_name: string;
-      priority: string;
-      status: string;
-      created_at: unknown;
-      full_count: string;
-    }>(sql`
-      SELECT
-        t.id,
-        t.title,
-        tt.type_name,
-        t.priority,
-        t.status,
-        t.created_at,
-        COUNT(*) OVER() AS full_count
-      FROM tickets t
-      JOIN ticket_types tt ON tt.id = t.ticket_type_id
-      ORDER BY t.created_at DESC
-      LIMIT ${pageSize} OFFSET ${offset}
-    `);
+    const whereCondition = applyTicketFilters([], filters);
 
-    const totalCount = rows.length > 0 ? Number(rows[0].full_count) : 0;
+    const rows = await tx
+      .select({
+        id: tickets.id,
+        title: tickets.title,
+        typeName: ticketTypes.typeName,
+        priority: tickets.priority,
+        status: tickets.status,
+        createdAt: tickets.createdAt,
+      })
+      .from(tickets)
+      .innerJoin(ticketTypes, eq(ticketTypes.id, tickets.ticketTypeId))
+      .where(whereCondition)
+      .orderBy(desc(tickets.createdAt))
+      .limit(pageSize)
+      .offset(offset);
+
+    const countResult = await tx
+      .select({ count: sql<string>`count(*)` })
+      .from(tickets)
+      .where(whereCondition);
+
+    const totalCount = Number(countResult[0]?.count ?? 0);
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
     return {
       rows: rows.map((r) => ({
         id: r.id,
         title: r.title,
-        typeName: r.type_name,
+        typeName: r.typeName,
         priority: r.priority,
-        status: r.status,
-        createdAt: toIso(r.created_at),
+        status: r.status ?? 'open',
+        createdAt: toIso(r.createdAt),
       })),
       totalCount,
       totalPages,
