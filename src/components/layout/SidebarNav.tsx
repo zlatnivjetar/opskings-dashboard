@@ -6,6 +6,7 @@ import { LayoutDashboard, Clock, Users, Building2, Ticket, PlusCircle } from 'lu
 import { LayoutGroup, motion } from 'motion/react';
 import { cn } from '@/lib/utils';
 import type { LucideIcon } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 type NavItem = { href: string; label: string; icon: LucideIcon };
 type NavCategory = { category: string; items: NavItem[] };
@@ -32,7 +33,7 @@ const CLIENT_CATEGORIES: NavCategory[] = [
   },
 ];
 
-export function SidebarNav({ role }: { role: string }) {
+export function SidebarNav({ role, collapsed = false }: { role: string; collapsed?: boolean }) {
   const pathname = usePathname();
   const categories = role === 'team_member' ? TEAM_MEMBER_CATEGORIES : CLIENT_CATEGORIES;
 
@@ -41,20 +42,20 @@ export function SidebarNav({ role }: { role: string }) {
       <nav className="flex flex-col gap-0.5">
         {categories.map(({ category, items }) => (
           <div key={category} className="mb-1">
-            {category && (
+            {!collapsed && category && (
               <p className="px-3 mb-1 mt-3 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground first:mt-0">
                 {category}
               </p>
             )}
             {items.map(({ href, label, icon: Icon }) => {
               const isActive = pathname === href;
-              return (
+              const link = (
                 <Link
-                  key={href}
                   href={href}
                   prefetch={false}
                   className={cn(
-                    'relative flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
+                    'relative flex items-center rounded-md text-sm font-medium transition-colors',
+                    collapsed ? 'justify-center py-2 w-full' : 'px-3 py-1.5',
                     isActive
                       ? 'text-sidebar-accent-foreground'
                       : 'text-sidebar-foreground hover:text-sidebar-accent-foreground',
@@ -67,11 +68,26 @@ export function SidebarNav({ role }: { role: string }) {
                       transition={{ type: 'spring', bounce: 0.15, duration: 0.3 }}
                     />
                   )}
-                  <span className="relative z-10 flex items-center gap-3">
+                  <span className={cn('relative z-10 flex items-center', !collapsed && 'gap-3')}>
                     <Icon className="size-[18px] shrink-0" />
-                    {label}
+                    {!collapsed && label}
                   </span>
                 </Link>
+              );
+
+              return (
+                <div key={href}>
+                  {collapsed ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>{link}</TooltipTrigger>
+                      <TooltipContent side="right" sideOffset={8}>
+                        {label}
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    link
+                  )}
+                </div>
               );
             })}
           </div>

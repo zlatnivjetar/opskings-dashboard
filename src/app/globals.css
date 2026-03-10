@@ -61,9 +61,9 @@
   /* Core surfaces */
   --background: oklch(0.985 0.003 255);
   --foreground: oklch(0.235 0.025 264);
-  --card: oklch(0.998 0.002 255);
+  --card: oklch(1 0 0);
   --card-foreground: oklch(0.235 0.025 264);
-  --popover: oklch(0.998 0.002 255);
+  --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.235 0.025 264);
   /* Brand */
   --primary: oklch(0.56 0.17 264);

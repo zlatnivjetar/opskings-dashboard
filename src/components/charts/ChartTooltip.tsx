@@ -22,7 +22,7 @@ interface Entry {
 
 interface TooltipContentProps {
   active?: boolean;
-  payload?: Entry[];
+  payload?: readonly Entry[];
   label?: string;
 }
 

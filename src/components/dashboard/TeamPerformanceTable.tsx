@@ -12,6 +12,7 @@ import {
   type SortingState,
   type ColumnFiltersState,
   type FilterFn,
+  type Column,
 } from '@tanstack/react-table';
 import {
   Table,
@@ -26,8 +27,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ArrowUp, ArrowDown, ArrowUpDown, ListFilter } from 'lucide-react';
 import { getTeamPerformance, type TeamPerformanceRow } from '@/lib/queries/team';
 import { formatUsername } from '@/lib/format';
+import { cn } from '@/lib/utils';
 
 // ─── Custom filter functions ───────────────────────────────────────────────
 
@@ -58,69 +63,137 @@ function findTopPerformerId(rows: TeamPerformanceRow[]): number | null {
       ? ratingsWithValues.reduce((a, b) => a + b, 0) / ratingsWithValues.length
       : 0;
 
-  // Best resolution rate + rating above average
   const candidates = withTickets.filter(
     (r) => r.resolutionRate === maxRate && (r.avgRating ?? 0) >= avgRating
   );
   if (candidates.length === 0) return null;
 
-  // Tiebreak: highest rating
   candidates.sort((a, b) => (b.avgRating ?? 0) - (a.avgRating ?? 0));
   return candidates[0].id;
 }
 
-// ─── Column header filter controls ─────────────────────────────────────────
+// ─── Sort icon ────────────────────────────────────────────────────────────
 
-function TextFilter({ columnId, table }: { columnId: string; table: ReturnType<typeof useReactTable<TeamPerformanceRow>> }) {
-  const column = table.getColumn(columnId);
-  const value = (column?.getFilterValue() as string) ?? '';
+function SortIcon({ direction }: { direction: false | 'asc' | 'desc' }) {
+  if (!direction) return <ArrowUpDown className="h-3.5 w-3.5 opacity-35" />;
+  return direction === 'asc'
+    ? <ArrowUp className="h-3.5 w-3.5" />
+    : <ArrowDown className="h-3.5 w-3.5" />;
+}
+
+// ─── Text filter popover ──────────────────────────────────────────────────
+
+function TextFilterPopover({ column }: { column: Column<TeamPerformanceRow> }) {
+  const value = (column.getFilterValue() as string) ?? '';
+  const isActive = value.length > 0;
   return (
-    <Input
-      placeholder="Filter…"
-      value={value}
-      onChange={(e) => column?.setFilterValue(e.target.value || undefined)}
-      className="h-7 text-xs mt-1 w-32 mr-4 font-normal"
-    />
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          className={cn(
+            'rounded p-0.5 hover:bg-muted transition-colors',
+            isActive ? 'text-primary' : 'text-muted-foreground/50 hover:text-muted-foreground'
+          )}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <ListFilter className="h-3.5 w-3.5" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-48 p-3 space-y-2"
+        align="start"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="text-xs font-medium text-muted-foreground">
+          {String(column.columnDef.header)}
+        </p>
+        <Input
+          placeholder="Filter…"
+          value={value}
+          onChange={(e) => column.setFilterValue(e.target.value || undefined)}
+          className="h-7 text-xs"
+          autoFocus
+        />
+        {isActive && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-full text-xs"
+            onClick={() => column.setFilterValue(undefined)}
+          >
+            Clear
+          </Button>
+        )}
+      </PopoverContent>
+    </Popover>
   );
 }
 
-function RangeFilter({ columnId, table }: { columnId: string; table: ReturnType<typeof useReactTable<TeamPerformanceRow>> }) {
-  const column = table.getColumn(columnId);
-  const [min, max] = (column?.getFilterValue() as [number | '', number | '']) ?? ['', ''];
+// ─── Range filter popover ─────────────────────────────────────────────────
+
+function RangeFilterPopover({ column }: { column: Column<TeamPerformanceRow> }) {
+  const [min, max] = (column.getFilterValue() as [number | '', number | '']) ?? ['', ''];
+  const isActive = min !== '' || max !== '';
 
   const set = (newMin: number | '', newMax: number | '') => {
     if (newMin === '' && newMax === '') {
-      column?.setFilterValue(undefined);
+      column.setFilterValue(undefined);
     } else {
-      column?.setFilterValue([newMin, newMax]);
+      column.setFilterValue([newMin, newMax]);
     }
   };
 
   return (
-    <div className="flex gap-1 mt-1">
-      <Input
-        type="number"
-        placeholder="Min"
-        value={min}
-        onChange={(e) => set(e.target.value === '' ? '' : Number(e.target.value), max)}
-        className="h-7 text-xs w-16 font-normal"
-      />
-      <Input
-        type="number"
-        placeholder="Max"
-        value={max}
-        onChange={(e) => set(min, e.target.value === '' ? '' : Number(e.target.value))}
-        className="h-7 text-xs w-16 font-normal"
-      />
-    </div>
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          className={cn(
+            'rounded p-0.5 hover:bg-muted transition-colors',
+            isActive ? 'text-primary' : 'text-muted-foreground/50 hover:text-muted-foreground'
+          )}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <ListFilter className="h-3.5 w-3.5" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-48 p-3 space-y-2"
+        align="start"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="text-xs font-medium text-muted-foreground">
+          {String(column.columnDef.header)}
+        </p>
+        <div className="flex gap-1.5">
+          <Input
+            type="number"
+            placeholder="Min"
+            value={min}
+            onChange={(e) => set(e.target.value === '' ? '' : Number(e.target.value), max)}
+            className="h-7 text-xs"
+            autoFocus
+          />
+          <Input
+            type="number"
+            placeholder="Max"
+            value={max}
+            onChange={(e) => set(min, e.target.value === '' ? '' : Number(e.target.value))}
+            className="h-7 text-xs"
+          />
+        </div>
+        {isActive && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-full text-xs"
+            onClick={() => column.setFilterValue(undefined)}
+          >
+            Clear
+          </Button>
+        )}
+      </PopoverContent>
+    </Popover>
   );
-}
-
-// ─── Sort indicator ────────────────────────────────────────────────────────
-
-function SortIcon({ direction }: { direction: false | 'asc' | 'desc' }) {
-  if (!direction) return <span className="ml-1 opacity-30">↕</span>;
-  return <span className="ml-1">{direction === 'asc' ? '↑' : '↓'}</span>;
 }
 
 // ─── Main table component ──────────────────────────────────────────────────
@@ -228,8 +301,8 @@ export function TeamPerformanceTable() {
     getFilteredRowModel: getFilteredRowModel(),
   });
 
-  const textCols = ['username', 'department', 'status'];
-  const numericCols = ['assigned', 'resolved', 'resolutionRate', 'avgResolutionHours', 'avgRating'];
+  const textCols = new Set(['username', 'department', 'status']);
+  const numericCols = new Set(['assigned', 'resolved', 'resolutionRate', 'avgResolutionHours', 'avgRating']);
 
   if (isLoading) {
     return (
@@ -257,28 +330,30 @@ export function TeamPerformanceTable() {
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((hg) => (
-              <TableRow key={hg.id} className="align-top">
+              <TableRow key={hg.id}>
                 {hg.headers.map((header) => {
                   const colId = header.column.id;
-                  const isText = textCols.includes(colId);
-                  const isNum = numericCols.includes(colId);
+                  const isText = textCols.has(colId);
+                  const isNum = numericCols.has(colId);
                   return (
-                    <TableHead key={header.id} className="align-top pb-2">
-                      <div
-                        className={
-                          header.column.getCanSort()
-                            ? 'cursor-pointer select-none inline-flex items-center font-semibold'
-                            : ''
-                        }
-                        onClick={header.column.getToggleSortingHandler()}
-                      >
-                        {flexRender(header.column.columnDef.header, header.getContext())}
-                        {header.column.getCanSort() && (
-                          <SortIcon direction={header.column.getIsSorted()} />
-                        )}
+                    <TableHead key={header.id} className="whitespace-nowrap">
+                      <div className="flex items-center gap-1">
+                        <div
+                          className={
+                            header.column.getCanSort()
+                              ? 'cursor-pointer select-none flex items-center gap-1'
+                              : 'flex items-center'
+                          }
+                          onClick={header.column.getToggleSortingHandler()}
+                        >
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                          {header.column.getCanSort() && (
+                            <SortIcon direction={header.column.getIsSorted()} />
+                          )}
+                        </div>
+                        {isText && <TextFilterPopover column={header.column} />}
+                        {isNum && <RangeFilterPopover column={header.column} />}
                       </div>
-                      {isText && <TextFilter columnId={colId} table={table} />}
-                      {isNum && <RangeFilter columnId={colId} table={table} />}
                     </TableHead>
                   );
                 })}
