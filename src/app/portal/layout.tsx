@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getUserContext } from '@/lib/auth/get-user-context';
 import { Sidebar } from '@/components/layout/Sidebar';
+import { MotionMain } from '@/components/layout/MotionMain';
 
 export default async function PortalLayout({
   children,
@@ -16,7 +17,7 @@ export default async function PortalLayout({
   return (
     <div className="flex h-screen">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto">{children}</main>
+      <MotionMain>{children}</MotionMain>
     </div>
   );
 }

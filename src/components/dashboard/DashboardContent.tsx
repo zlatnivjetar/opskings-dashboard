@@ -60,6 +60,7 @@ function KpiCards({
         value={formatCompact(summary.totalTickets)}
         subtitle="All tickets in period"
         trend={computeTrend(summary.totalTickets, previous?.totalTickets)}
+        delay={0}
       />
       <KpiCard
         label="OPEN TICKETS"
@@ -67,6 +68,7 @@ function KpiCards({
         subtitle={openPct}
         trend={computeTrend(summary.openTickets, previous?.openTickets)}
         positiveIsGood={false}
+        delay={0.05}
       />
       <KpiCard
         label="AVG RESOLUTION TIME"
@@ -78,6 +80,7 @@ function KpiCards({
             : undefined
         }
         positiveIsGood={false}
+        delay={0.1}
       />
       <KpiCard
         label="CUSTOMER SATISFACTION"
@@ -93,6 +96,7 @@ function KpiCards({
             ? computeTrend(summary.avgRating, previous.avgRating)
             : undefined
         }
+        delay={0.15}
       />
     </div>
   );

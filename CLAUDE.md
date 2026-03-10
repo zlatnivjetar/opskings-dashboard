@@ -29,7 +29,7 @@ Full plan: `docs/ui-overhaul-plan.md` — do NOT deviate from phase order withou
 - [x] Phase 5 — Chart Upgrades
 - [x] Phase 7 — Response Time Page Overhaul
 - [x] Phase 10 — Portal & Auth Polish
-- [ ] Phase 9 — Motion Polish
+- [x] Phase 9 — Motion Polish
 - [ ] Phase 11 — Distribution Page Removal + Cleanup
 - [ ] Phase 12 — Visual Regression Baselines
 
@@ -176,6 +176,12 @@ Examples of good entries:
 - `get_overdue_tickets_rls` return type changed — now includes `created_at TEXT` (deployed via `scripts/deploy-rt-function.ts` which DROPs and re-CREATEs the function); `OverdueTicketRow` in `response-time.ts` has `createdAt: string`
 - `ResponseTimeContent.tsx` layout: `grid-cols-3` two-column row — histogram at `lg:col-span-2`, "Summary by Priority" table at `col-span-1`; resolved count per priority is derived client-side by summing histogram bins; overdue count per priority is derived from `overdue.rows` — no extra queries needed
 - `formatDate(iso: string)` added to `src/lib/format.ts` — formats ISO timestamp to `"Jan 15, 2025"`; available for reuse in Phase 10 portal dates
+
+- `motion` (Framer Motion v11+) installed — import from `motion/react` in all component files
+- `MotionMain` client component at `src/components/layout/MotionMain.tsx` — wraps `<main>` with `AnimatePresence mode="wait"` keyed on `usePathname()`; imported by server layouts (RSC can safely pass `children` as opaque nodes into client components)
+- `SidebarNav` uses `LayoutGroup id="sidebar-nav"` + `motion.span layoutId="active-bg"` for the sliding active background — `border-l-2` indicator removed; icon + label wrapped in `<span className="relative z-10">` to sit above the animated bg
+- `KpiCard` is now `'use client'` (required for motion import) — accepts `delay?: number` prop for stagger; wrap is `motion.div` with `initial={{ opacity: 0, y: 8 }}`; no exit animation
+- `motion` runtime handles `prefers-reduced-motion` automatically — no explicit `useReducedMotion()` checks needed
 
 _(append here after each phase)_
 

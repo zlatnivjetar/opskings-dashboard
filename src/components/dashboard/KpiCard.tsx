@@ -1,3 +1,6 @@
+'use client';
+
+import { motion } from 'motion/react';
 import { Card } from '@/components/ui/card';
 
 interface KpiCardProps {
@@ -10,13 +13,19 @@ interface KpiCardProps {
   };
   /** When true, a positive trend is shown in success color. Default: true. */
   positiveIsGood?: boolean;
+  delay?: number;
 }
 
-export function KpiCard({ label, value, subtitle, trend, positiveIsGood = true }: KpiCardProps) {
+export function KpiCard({ label, value, subtitle, trend, positiveIsGood = true, delay = 0 }: KpiCardProps) {
   const isPositive = trend != null && trend.value >= 0;
   const isGood = trend != null && (positiveIsGood ? isPositive : !isPositive);
 
   return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2, delay }}
+    >
     <Card className="p-4">
       <p className="text-card-label">{label}</p>
       <p className="text-card-value mt-1">{value}</p>
@@ -34,5 +43,6 @@ export function KpiCard({ label, value, subtitle, trend, positiveIsGood = true }
       )}
       {subtitle && <p className="text-caption mt-1">{subtitle}</p>}
     </Card>
+    </motion.div>
   );
 }

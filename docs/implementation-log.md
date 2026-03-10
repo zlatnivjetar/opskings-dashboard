@@ -1,5 +1,9 @@
 # Implementation Log
 
+## UI Overhaul Phase 9: Motion Polish
+
+Installed `motion` (Framer Motion v11+) and applied micro-interactions to four surfaces. Created `MotionMain` client component wrapping `<main>` with `AnimatePresence mode="wait"` keyed on `usePathname()` — imported by both `(main)/layout.tsx` and `portal/layout.tsx` as RSC can pass children as opaque nodes into client components. Replaced `SidebarNav`'s CSS `border-l-2` active indicator with a `motion.span layoutId="active-bg"` spring-animated background sliding between items inside a `LayoutGroup`. Added rotate+fade `AnimatePresence` icon swap to `ThemeToggle` with `initial={false}` to suppress animation on first load. Converted `KpiCard` to a client component and wrapped it in a `motion.div` with fade-up entry (`opacity: 0, y: 8 → 0`); `DashboardContent` passes `delay={0/0.05/0.1/0.15}` for staggered card entry. The `motion` runtime handles `prefers-reduced-motion` automatically. Files touched: `MotionMain.tsx` (new), `SidebarNav.tsx`, `ThemeToggle.tsx`, `KpiCard.tsx`, `DashboardContent.tsx`, `(main)/layout.tsx`, `portal/layout.tsx`.
+
 ## UI Overhaul Phase 10: Portal & Auth Polish
 
 Added OpsKings branding (Crown icon, name, subtitle) above the auth card on both sign-in and sign-up pages, with a `bg-gradient-to-br from-background to-card` background. Fixed the last remaining hardcoded `text-red-600` in `NewTicketForm.tsx` → `text-destructive`. Applied typography utilities across portal pages: `text-page-title` on all page headings, `text-card-label` for the Messages section header, `text-caption` for message timestamps, and `formatDate()` for created/resolved dates in the ticket detail view. Files touched: `sign-in/page.tsx`, `sign-up/page.tsx`, `portal/page.tsx`, `portal/new/page.tsx`, `portal/tickets/[id]/page.tsx`, `NewTicketForm.tsx`.
