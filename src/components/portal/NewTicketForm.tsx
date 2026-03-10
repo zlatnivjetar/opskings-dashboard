@@ -49,7 +49,7 @@ export function NewTicketForm({ ticketTypes }: { ticketTypes: TicketTypeOption[]
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
 
       <div className="space-y-1.5">
         <Label>Ticket Type</Label>

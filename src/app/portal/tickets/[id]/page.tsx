@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getTicketDetail } from '@/lib/queries/portal';
-import { formatUsername } from '@/lib/format';
+import { formatUsername, formatDate } from '@/lib/format';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { FeedbackForm } from '@/components/portal/FeedbackForm';
@@ -50,18 +50,18 @@ export default async function TicketDetailPage({
 
       {/* Ticket header */}
       <div className="border rounded-lg p-5 space-y-3">
-        <h1 className="text-xl font-bold">{ticket.title}</h1>
+        <h1 className="text-page-title">{ticket.title}</h1>
         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <span>{ticket.typeName}</span>
           <span>·</span>
           <PriorityBadge priority={ticket.priority} />
           <StatusBadge status={ticket.status} />
           <span>·</span>
-          <span>Created {new Date(ticket.createdAt).toLocaleDateString()}</span>
+          <span>Created {formatDate(ticket.createdAt)}</span>
           {ticket.resolvedAt && (
             <>
               <span>·</span>
-              <span>Resolved {new Date(ticket.resolvedAt).toLocaleDateString()}</span>
+              <span>Resolved {formatDate(ticket.resolvedAt)}</span>
             </>
           )}
         </div>
@@ -69,9 +69,7 @@ export default async function TicketDetailPage({
 
       {/* Message thread */}
       <div className="space-y-3">
-        <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
-          Messages
-        </h2>
+        <h2 className="text-card-label">Messages</h2>
 
         {messages.length === 0 ? (
           <p className="text-muted-foreground text-sm">No messages yet.</p>
@@ -90,7 +88,7 @@ export default async function TicketDetailPage({
                   }`}
                 >
                   <p className="text-sm whitespace-pre-wrap">{msg.messageText}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-caption">
                     {msg.fromClient ? 'You' : (msg.teamMemberName ? formatUsername(msg.teamMemberName) : 'Support Team')}
                     {' · '}
                     {new Date(msg.createdAt).toLocaleString()}

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Crown } from 'lucide-react';
 import { authClient } from '@/lib/auth/auth-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,8 +35,16 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-sm">
+    <div className="flex min-h-screen items-center justify-center p-4 bg-gradient-to-br from-background to-card">
+      <div className="w-full max-w-sm space-y-6">
+        <div className="flex flex-col items-center gap-2">
+          <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary text-primary-foreground">
+            <Crown className="size-5" />
+          </div>
+          <p className="text-lg font-semibold">OpsKings</p>
+          <p className="text-caption">Support Analytics Dashboard</p>
+        </div>
+      <Card className="w-full">
         <CardHeader>
           <CardTitle>Sign in</CardTitle>
           <CardDescription>Enter your credentials to continue</CardDescription>
@@ -81,6 +90,7 @@ export default function SignInPage() {
           </CardFooter>
         </form>
       </Card>
+      </div>
     </div>
   );
 }

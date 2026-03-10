@@ -6,7 +6,7 @@ export default async function NewTicketPage() {
 
   return (
     <div className="p-6 max-w-lg">
-      <h1 className="text-2xl font-bold mb-6">New Ticket</h1>
+      <h1 className="text-page-title mb-6">New Ticket</h1>
       <NewTicketForm ticketTypes={ticketTypes} />
     </div>
   );
