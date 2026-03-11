@@ -12,12 +12,12 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { MultiSelectFilter, type SelectOption } from '@/components/filters/MultiSelectFilter';
 import { PlanBadge } from '@/components/ui/plan-badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowUp, ArrowDown, ArrowUpDown, ListFilter, Search, X } from 'lucide-react';
+import { ArrowUp, ArrowDown, ArrowUpDown, ListFilter, RotateCcw, Search, X } from 'lucide-react';
 import {
   type ClientAnalysisResult,
   type ClientAnalysisRow,
@@ -46,7 +46,7 @@ const formatDate = (iso: string) =>
 
 type ClientFilters = {
   name: string;
-  plan?: MultiFilter;
+  plan: MultiFilter;
   ticketsMin: number | '';
   ticketsMax: number | '';
   openMin: number | '';
@@ -57,7 +57,7 @@ type ClientFilters = {
 
 const DEFAULT_FILTERS: ClientFilters = {
   name: '',
-  plan: undefined,
+  plan: { operator: 'isAnyOf', values: [] },
   ticketsMin: '',
   ticketsMax: '',
   openMin: '',
@@ -85,10 +85,10 @@ function migratePlanFilter(
   current: ClientFilters['plan'],
   operator: FilterOperator,
 ): ClientFilters['plan'] {
-  const currentValues = (current?.values ?? []) as string[];
+  const currentValues = (current.values ?? []) as string[];
   const values = operator === 'is' || operator === 'isNot' ? currentValues.slice(0, 1) : currentValues;
 
-  return values.length > 0 ? { operator, values } : undefined;
+  return { operator, values };
 }
 
 function compareRows(
@@ -274,11 +274,11 @@ export function ClientAnalysisTable() {
     return allRows.filter((r) => {
       if (filters.name && !r.clientName.toLowerCase().includes(filters.name.toLowerCase())) return false;
 
-      const planFilterValues = (filters.plan?.values ?? []) as string[];
+      const planFilterValues = (filters.plan.values ?? []) as string[];
       if (planFilterValues.length > 0) {
         const plan = r.planType;
         const hasMatch = planFilterValues.includes(plan);
-        const operator = filters.plan?.operator ?? 'isAnyOf';
+        const operator = filters.plan.operator;
 
         if (operator === 'is' && plan !== planFilterValues[0]) return false;
         if (operator === 'isNot' && plan === planFilterValues[0]) return false;
@@ -317,9 +317,12 @@ export function ClientAnalysisTable() {
     setPage(1);
   };
 
+
+  const hasTopFilters = filters.name.length > 0 || filters.plan.values.length > 0;
+
   const isFiltered =
     filters.name.length > 0 ||
-    (filters.plan?.values.length ?? 0) > 0 ||
+    filters.plan.values.length > 0 ||
     filters.ticketsMin !== '' ||
     filters.ticketsMax !== '' ||
     filters.openMin !== '' ||
@@ -336,7 +339,7 @@ export function ClientAnalysisTable() {
             value={filters.name}
             onChange={(e) => setFilter('name', e.target.value)}
             placeholder="Search client name"
-            className="h-8 pl-8 pr-8 w-56"
+            className="h-8 w-56 border bg-secondary/50 hover:bg-secondary pl-8 pr-8 text-sm"
           />
           {filters.name.length > 0 && (
             <button
@@ -356,18 +359,36 @@ export function ClientAnalysisTable() {
           label="Plan"
           placeholder="Select plan"
           value={filters.plan}
-          operator={filters.plan?.operator ?? 'isAnyOf'}
+          operator={filters.plan.operator}
           operatorOptions={MULTI_FILTER_OPERATORS}
           options={planOptions}
           onOperatorChange={(operator) => setFilter('plan', migratePlanFilter(filters.plan, operator))}
           onChange={(value) => setFilter('plan', value)}
-          onClear={() => setFilter('plan', undefined)}
+          onClear={() => setFilter('plan', { operator: filters.plan.operator, values: [] })}
         />
+
+        {hasTopFilters && (
+          <div className="ml-auto">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 px-3 text-muted-foreground hover:text-foreground"
+              onClick={() => setFilters(DEFAULT_FILTERS)}
+            >
+              <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+              Reset
+            </Button>
+          </div>
+        )}
       </div>
 
-      <Card className="overflow-hidden p-0">
-        <Table>
-          <TableHeader>
+      <Card>
+        <CardHeader>
+          <CardTitle>Client Analysis</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
             <TableRow>
               {COLUMNS.map((col) => (
                 <TableHead
@@ -423,8 +444,8 @@ export function ClientAnalysisTable() {
                 </TableHead>
               ))}
             </TableRow>
-          </TableHeader>
-          <TableBody>
+            </TableHeader>
+            <TableBody>
             {isLoading ? (
               Array.from({ length: 10 }).map((_, i) => (
                 <TableRow key={i}>
@@ -462,38 +483,39 @@ export function ClientAnalysisTable() {
                 </TableRow>
               ))
             )}
-          </TableBody>
-        </Table>
-      </Card>
+            </TableBody>
+          </Table>
 
-      <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <span>
-          {sorted.length.toLocaleString()} clients{isFiltered ? ' (filtered)' : ' total'}
-        </span>
-        {totalPages > 1 && (
-          <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => p - 1)}
-              disabled={safePage <= 1}
-            >
-              Previous
-            </Button>
+          <div className="flex items-center justify-between text-sm text-muted-foreground mt-3">
             <span>
-              Page {safePage} of {totalPages}
+              {sorted.length.toLocaleString()} clients{isFiltered ? ' (filtered)' : ' total'}
             </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => p + 1)}
-              disabled={safePage >= totalPages}
-            >
-              Next
-            </Button>
+            {totalPages > 1 && (
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => p - 1)}
+                  disabled={safePage <= 1}
+                >
+                  Previous
+                </Button>
+                <span>
+                  Page {safePage} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => p + 1)}
+                  disabled={safePage >= totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
