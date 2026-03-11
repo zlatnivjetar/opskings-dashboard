@@ -30,7 +30,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ArrowUp, ArrowDown, ArrowUpDown, ListFilter } from 'lucide-react';
-import { getTeamPerformance, type TeamPerformanceRow } from '@/lib/queries/team';
+import { type TeamPerformanceRow } from '@/lib/queries/team';
 import { formatUsername } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
@@ -206,7 +206,11 @@ function fmt(val: number | null, decimals = 1): string {
 export function TeamPerformanceTable() {
   const { data = [], isLoading } = useQuery({
     queryKey: ['team', 'performance'],
-    queryFn: () => getTeamPerformance(),
+    queryFn: async () => {
+      const res = await fetch('/api/team/performance');
+      if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+      return res.json() as Promise<TeamPerformanceRow[]>;
+    },
     staleTime: 30_000,
   });
 
