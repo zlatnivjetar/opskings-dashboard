@@ -54,7 +54,7 @@ export default function SignUpPage() {
             {error && (
               <p className="text-sm text-destructive">{error}</p>
             )}
-            <div className="space-y-1">
+            <div className="space-y-2">
               <Label htmlFor="name">Name</Label>
               <Input
                 id="name"
@@ -65,7 +65,7 @@ export default function SignUpPage() {
                 onChange={(e) => setName(e.target.value)}
               />
             </div>
-            <div className="space-y-1">
+            <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
@@ -76,7 +76,7 @@ export default function SignUpPage() {
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
-            <div className="space-y-1">
+            <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
@@ -88,7 +88,7 @@ export default function SignUpPage() {
               />
             </div>
           </CardContent>
-          <CardFooter className="flex flex-col gap-3">
+          <CardFooter className="mt-4 flex flex-col gap-3">
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Creating account…' : 'Create account'}
             </Button>
