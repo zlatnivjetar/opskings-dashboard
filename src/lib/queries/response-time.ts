@@ -330,3 +330,26 @@ export async function getResponseTimeOverview(
 
   return { summary, histogram };
 }
+
+
+export type ResponseTimeAll = {
+  overview: ResponseTimeOverview;
+  stats: ResolutionStatRow[];
+  overdue: OverdueTicketsResult;
+  overdueByPriority: OverdueByPriorityRow[];
+};
+
+export async function getResponseTimeAll(
+  filters: FilterState,
+  page = 1,
+  pageSize = 20,
+): Promise<ResponseTimeAll> {
+  const [overview, stats, overdue, overdueByPriority] = await Promise.all([
+    getResponseTimeOverview(filters),
+    getResolutionTimeStats(filters),
+    getOverdueTickets(filters, { page, pageSize }),
+    getOverdueByPriority(filters),
+  ]);
+
+  return { overview, stats, overdue, overdueByPriority };
+}

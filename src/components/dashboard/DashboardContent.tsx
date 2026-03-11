@@ -13,10 +13,7 @@ import { useFilterState } from '@/hooks/use-filter-state';
 import { formatCompact, formatHours } from '@/lib/format';
 import { serializeFilters } from '@/lib/api/filter-state';
 import type {
-  DashboardDistributions,
-  DashboardSummary,
-  TicketsOverTimeRow,
-  TicketsByTypeRow,
+  DashboardAllWithComparison,
 } from '@/lib/queries/dashboard';
 
 function computeTrend(
@@ -52,12 +49,10 @@ function ChartsSkeleton() {
 }
 
 function ChartsRow({
-  ticketsOverTime,
-  byType,
+  data,
   isLoading,
 }: {
-  ticketsOverTime: TicketsOverTimeRow[] | undefined;
-  byType: TicketsByTypeRow[] | undefined;
+  data: DashboardAllWithComparison | undefined;
   isLoading: boolean;
 }) {
   if (isLoading) return <ChartsSkeleton />;
@@ -68,7 +63,7 @@ function ChartsRow({
           <CardTitle>Tickets Over Time</CardTitle>
         </CardHeader>
         <CardContent>
-          <TicketsOverTimeChart data={ticketsOverTime ?? []} />
+          <TicketsOverTimeChart data={data?.ticketsOverTime ?? []} />
         </CardContent>
       </Card>
       <Card className="lg:col-span-1">
@@ -76,7 +71,7 @@ function ChartsRow({
           <CardTitle>Tickets by Type</CardTitle>
         </CardHeader>
         <CardContent>
-          <TicketsByTypeChart data={byType ?? []} />
+          <TicketsByTypeChart data={data?.byType ?? []} />
         </CardContent>
       </Card>
     </div>
@@ -87,31 +82,14 @@ function Inner() {
   const { filters } = useFilterState();
   const filterParam = useMemo(() => serializeFilters(filters), [filters]);
 
-  const summaryQuery = useQuery({
-    queryKey: ['dashboard', 'summary', filters],
-    queryFn: () =>
-      getJson<{ summary: DashboardSummary; previousSummary: DashboardSummary | null }>(
-        `/api/dashboard/summary?filters=${filterParam}`,
-      ),
+  const dashboardQuery = useQuery({
+    queryKey: ['dashboard', 'all', filters],
+    queryFn: () => getJson<DashboardAllWithComparison>(`/api/dashboard/all?filters=${filterParam}`),
     staleTime: 30_000,
   });
 
-  const timeQuery = useQuery({
-    queryKey: ['dashboard', 'tickets-over-time', filters],
-    queryFn: () =>
-      getJson<TicketsOverTimeRow[]>(`/api/dashboard/tickets-over-time?filters=${filterParam}`),
-    staleTime: 30_000,
-  });
-
-  const distributionsQuery = useQuery({
-    queryKey: ['dashboard', 'distributions', filters],
-    queryFn: () =>
-      getJson<DashboardDistributions>(`/api/dashboard/distributions?filters=${filterParam}`),
-    staleTime: 30_000,
-  });
-
-  const summary = summaryQuery.data?.summary;
-  const previous = summaryQuery.data?.previousSummary;
+  const summary = dashboardQuery.data?.summary;
+  const previous = dashboardQuery.data?.previousSummary;
 
   const openPct =
     summary && summary.totalTickets > 0
@@ -174,9 +152,8 @@ function Inner() {
       </div>
 
       <ChartsRow
-        ticketsOverTime={timeQuery.data}
-        byType={distributionsQuery.data?.byType}
-        isLoading={timeQuery.isLoading || distributionsQuery.isLoading}
+        data={dashboardQuery.data}
+        isLoading={dashboardQuery.isLoading}
       />
 
       <Card>
@@ -184,10 +161,10 @@ function Inner() {
           <CardTitle>Tickets by Priority</CardTitle>
         </CardHeader>
         <CardContent>
-          {distributionsQuery.isLoading ? (
+          {dashboardQuery.isLoading ? (
             <Skeleton className="h-[200px] w-full" />
           ) : (
-            <TicketsByPriorityChart data={distributionsQuery.data?.byPriority ?? []} />
+            <TicketsByPriorityChart data={dashboardQuery.data?.byPriority ?? []} />
           )}
         </CardContent>
       </Card>

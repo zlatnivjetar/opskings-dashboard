@@ -21,10 +21,7 @@ import { useFilterState } from '@/hooks/use-filter-state';
 import { formatCompact, formatHours } from '@/lib/format';
 import { serializeFilters } from '@/lib/api/filter-state';
 import type {
-  OverdueByPriorityRow,
-  OverdueTicketsResult,
-  ResponseTimeOverview,
-  ResolutionStatRow,
+  ResponseTimeAll,
 } from '@/lib/queries/response-time';
 
 const RT_FILTERS = ['date', 'teamMember'] as const;
@@ -62,86 +59,63 @@ function Inner() {
   const [page, setPage] = useState(1);
   const queryClient = useQueryClient();
   const filterParam = useMemo(() => serializeFilters(filters), [filters]);
-  const offset = (page - 1) * PAGE_SIZE;
-
-  const overviewQuery = useQuery({
-    queryKey: ['response-time', 'overview', filters],
-    queryFn: () => getJson<ResponseTimeOverview>(`/api/response-time/overview?filters=${filterParam}`),
-    staleTime: 30_000,
-  });
-
-  const statsQuery = useQuery({
-    queryKey: ['response-time', 'stats', filters],
-    queryFn: () => getJson<ResolutionStatRow[]>(`/api/response-time/stats?filters=${filterParam}`),
-    staleTime: 30_000,
-  });
-
-  const overdueQuery = useQuery({
-    queryKey: ['response-time', 'overdue', filters, page],
+  const allQuery = useQuery({
+    queryKey: ['response-time', 'all', filters, page],
     queryFn: () =>
-      getJson<OverdueTicketsResult>(
-        `/api/response-time/overdue?filters=${filterParam}&limit=${PAGE_SIZE}&offset=${offset}`,
+      getJson<ResponseTimeAll>(
+        `/api/response-time/all?filters=${filterParam}&page=${page}&pageSize=${PAGE_SIZE}`,
       ),
     staleTime: 30_000,
     placeholderData: (previousData) => previousData,
   });
 
-  const overdueByPriorityQuery = useQuery({
-    queryKey: ['response-time', 'overdue-by-priority', filters],
-    queryFn: () =>
-      getJson<OverdueByPriorityRow[]>(`/api/response-time/overdue-by-priority?filters=${filterParam}`),
-    staleTime: 30_000,
-  });
-
 
   useEffect(() => {
-    if (page !== 1 || !overdueQuery.data || overdueQuery.data.totalPages < 2) {
+    if (page !== 1 || !allQuery.data || allQuery.data.overdue.totalPages < 2) {
       return;
     }
 
     const nextPage = 2;
-    const nextOffset = (nextPage - 1) * PAGE_SIZE;
-
     void queryClient.prefetchQuery({
-      queryKey: ['response-time', 'overdue', filters, nextPage],
+      queryKey: ['response-time', 'all', filters, nextPage],
       queryFn: () =>
-        getJson<OverdueTicketsResult>(
-          `/api/response-time/overdue?filters=${filterParam}&limit=${PAGE_SIZE}&offset=${nextOffset}`,
+        getJson<ResponseTimeAll>(
+          `/api/response-time/all?filters=${filterParam}&page=${nextPage}&pageSize=${PAGE_SIZE}`,
         ),
       staleTime: 30_000,
     });
-  }, [queryClient, page, overdueQuery.data, filters, filterParam]);
+  }, [queryClient, page, allQuery.data, filters, filterParam]);
 
   const sorted = useMemo(
     () =>
-      [...(statsQuery.data ?? [])].sort(
+      [...(allQuery.data?.stats ?? [])].sort(
         (a, b) => PRIORITY_ORDER.indexOf(a.priority) - PRIORITY_ORDER.indexOf(b.priority),
       ),
-    [statsQuery.data],
+    [allQuery.data?.stats],
   );
 
   const resolvedByPriority = useMemo(() => {
     const result: Record<string, number> = { low: 0, medium: 0, high: 0, urgent: 0 };
-    for (const bin of overviewQuery.data?.histogram ?? []) {
+    for (const bin of allQuery.data?.overview.histogram ?? []) {
       result.low += bin.low;
       result.medium += bin.medium;
       result.high += bin.high;
       result.urgent += bin.urgent;
     }
     return result;
-  }, [overviewQuery.data?.histogram]);
+  }, [allQuery.data?.overview.histogram]);
 
   const overdueByPriority = useMemo(() => {
     const result: Record<string, number> = { low: 0, medium: 0, high: 0, urgent: 0 };
-    for (const row of overdueByPriorityQuery.data ?? []) {
+    for (const row of allQuery.data?.overdueByPriority ?? []) {
       result[row.priority] = row.overdueCount;
     }
     return result;
-  }, [overdueByPriorityQuery.data]);
+  }, [allQuery.data?.overdueByPriority]);
 
   const overduePct =
-    overviewQuery.data && overviewQuery.data.summary.resolvedCount > 0 && overdueQuery.data
-      ? `${((overdueQuery.data.totalCount / overviewQuery.data.summary.resolvedCount) * 100).toFixed(1)}% of resolved`
+    allQuery.data && allQuery.data.overview.summary.resolvedCount > 0
+      ? `${((allQuery.data.overdue.totalCount / allQuery.data.overview.summary.resolvedCount) * 100).toFixed(1)}% of resolved`
       : undefined;
 
   return (
@@ -156,14 +130,14 @@ function Inner() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
           label="RESOLVED TICKETS"
-          value={overviewQuery.data ? formatCompact(overviewQuery.data.summary.resolvedCount) : '—'}
+          value={allQuery.data ? formatCompact(allQuery.data.overview.summary.resolvedCount) : '—'}
           subtitle="In selected period"
         />
         <KpiCard
           label="MEDIAN RESOLUTION"
           value={
-            overviewQuery.data?.summary.medianHours != null
-              ? formatHours(overviewQuery.data.summary.medianHours)
+            allQuery.data?.overview.summary.medianHours != null
+              ? formatHours(allQuery.data.overview.summary.medianHours)
               : '—'
           }
           subtitle="50th percentile"
@@ -172,8 +146,8 @@ function Inner() {
         <KpiCard
           label="AVG RESOLUTION TIME"
           value={
-            overviewQuery.data?.summary.avgHours != null
-              ? formatHours(overviewQuery.data.summary.avgHours)
+            allQuery.data?.overview.summary.avgHours != null
+              ? formatHours(allQuery.data.overview.summary.avgHours)
               : '—'
           }
           subtitle="Resolved tickets only"
@@ -181,7 +155,7 @@ function Inner() {
         />
         <KpiCard
           label="OVERDUE TICKETS"
-          value={overdueQuery.data ? formatCompact(overdueQuery.data.totalCount) : '—'}
+          value={allQuery.data ? formatCompact(allQuery.data.overdue.totalCount) : '—'}
           subtitle={overduePct}
           positiveIsGood={false}
         />
@@ -193,10 +167,10 @@ function Inner() {
             <CardTitle>Resolution Time Distribution</CardTitle>
           </CardHeader>
           <CardContent>
-            {overviewQuery.isLoading ? (
+            {allQuery.isLoading ? (
               <Skeleton className="h-[280px] w-full" />
             ) : (
-              <ResolutionHistogramChart data={overviewQuery.data?.histogram ?? []} />
+              <ResolutionHistogramChart data={allQuery.data?.overview.histogram ?? []} />
             )}
           </CardContent>
         </Card>
@@ -206,7 +180,7 @@ function Inner() {
             <CardTitle>Summary by Priority</CardTitle>
           </CardHeader>
           <CardContent className="px-0">
-            {statsQuery.isLoading ? (
+            {allQuery.isLoading ? (
               <Skeleton className="h-[280px] w-full mx-6" />
             ) : (
               <Table>
@@ -265,13 +239,13 @@ function Inner() {
         </CardHeader>
         <CardContent>
           <OverdueTicketsTable
-            rows={overdueQuery.data?.rows ?? []}
-            totalCount={overdueQuery.data?.totalCount ?? 0}
-            totalPages={overdueQuery.data?.totalPages ?? 1}
+            rows={allQuery.data?.overdue.rows ?? []}
+            totalCount={allQuery.data?.overdue.totalCount ?? 0}
+            totalPages={allQuery.data?.overdue.totalPages ?? 1}
             page={page}
             onPageChange={setPage}
-            isLoading={overdueQuery.isLoading}
-            isFetching={overdueQuery.isFetching}
+            isLoading={allQuery.isLoading}
+            isFetching={allQuery.isFetching}
           />
         </CardContent>
       </Card>
