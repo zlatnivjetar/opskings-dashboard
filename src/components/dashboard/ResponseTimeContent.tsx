@@ -21,10 +21,9 @@ import { useFilterState } from '@/hooks/use-filter-state';
 import { formatCompact, formatHours } from '@/lib/format';
 import { serializeFilters } from '@/lib/api/filter-state';
 import type {
-  HistogramRow,
   OverdueTicketsResult,
+  ResponseTimeOverview,
   ResolutionStatRow,
-  ResolutionSummaryStats,
 } from '@/lib/queries/response-time';
 
 const RT_FILTERS = ['date', 'teamMember'] as const;
@@ -64,23 +63,15 @@ function Inner() {
   const filterParam = useMemo(() => serializeFilters(filters), [filters]);
   const offset = (page - 1) * PAGE_SIZE;
 
-  const summaryQuery = useQuery({
-    queryKey: ['response-time', 'summary', filters],
-    queryFn: () =>
-      getJson<ResolutionSummaryStats>(`/api/response-time/summary?filters=${filterParam}`),
+  const overviewQuery = useQuery({
+    queryKey: ['response-time', 'overview', filters],
+    queryFn: () => getJson<ResponseTimeOverview>(`/api/response-time/overview?filters=${filterParam}`),
     staleTime: 30_000,
   });
 
   const statsQuery = useQuery({
     queryKey: ['response-time', 'stats', filters],
     queryFn: () => getJson<ResolutionStatRow[]>(`/api/response-time/stats?filters=${filterParam}`),
-    staleTime: 30_000,
-  });
-
-  const histogramQuery = useQuery({
-    queryKey: ['response-time', 'histogram', filters],
-    queryFn: () =>
-      getJson<HistogramRow[]>(`/api/response-time/histogram?filters=${filterParam}`),
     staleTime: 30_000,
   });
 
@@ -122,14 +113,14 @@ function Inner() {
 
   const resolvedByPriority = useMemo(() => {
     const result: Record<string, number> = { low: 0, medium: 0, high: 0, urgent: 0 };
-    for (const bin of histogramQuery.data ?? []) {
+    for (const bin of overviewQuery.data?.histogram ?? []) {
       result.low += bin.low;
       result.medium += bin.medium;
       result.high += bin.high;
       result.urgent += bin.urgent;
     }
     return result;
-  }, [histogramQuery.data]);
+  }, [overviewQuery.data?.histogram]);
 
   const overdueByPriority = useMemo(() => {
     const result: Record<string, number> = {};
@@ -140,8 +131,8 @@ function Inner() {
   }, [overdueQuery.data?.rows]);
 
   const overduePct =
-    summaryQuery.data && summaryQuery.data.resolvedCount > 0 && overdueQuery.data
-      ? `${((overdueQuery.data.totalCount / summaryQuery.data.resolvedCount) * 100).toFixed(1)}% of resolved`
+    overviewQuery.data && overviewQuery.data.summary.resolvedCount > 0 && overdueQuery.data
+      ? `${((overdueQuery.data.totalCount / overviewQuery.data.summary.resolvedCount) * 100).toFixed(1)}% of resolved`
       : undefined;
 
   return (
@@ -156,18 +147,26 @@ function Inner() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
           label="RESOLVED TICKETS"
-          value={summaryQuery.data ? formatCompact(summaryQuery.data.resolvedCount) : '—'}
+          value={overviewQuery.data ? formatCompact(overviewQuery.data.summary.resolvedCount) : '—'}
           subtitle="In selected period"
         />
         <KpiCard
           label="MEDIAN RESOLUTION"
-          value={summaryQuery.data?.medianHours != null ? formatHours(summaryQuery.data.medianHours) : '—'}
+          value={
+            overviewQuery.data?.summary.medianHours != null
+              ? formatHours(overviewQuery.data.summary.medianHours)
+              : '—'
+          }
           subtitle="50th percentile"
           positiveIsGood={false}
         />
         <KpiCard
           label="AVG RESOLUTION TIME"
-          value={summaryQuery.data?.avgHours != null ? formatHours(summaryQuery.data.avgHours) : '—'}
+          value={
+            overviewQuery.data?.summary.avgHours != null
+              ? formatHours(overviewQuery.data.summary.avgHours)
+              : '—'
+          }
           subtitle="Resolved tickets only"
           positiveIsGood={false}
         />
@@ -185,10 +184,10 @@ function Inner() {
             <CardTitle>Resolution Time Distribution</CardTitle>
           </CardHeader>
           <CardContent>
-            {histogramQuery.isLoading ? (
+            {overviewQuery.isLoading ? (
               <Skeleton className="h-[280px] w-full" />
             ) : (
-              <ResolutionHistogramChart data={histogramQuery.data ?? []} />
+              <ResolutionHistogramChart data={overviewQuery.data?.histogram ?? []} />
             )}
           </CardContent>
         </Card>

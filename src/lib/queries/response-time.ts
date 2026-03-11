@@ -104,6 +104,11 @@ export type HistogramRow = {
   urgent: number;
 };
 
+export type ResponseTimeOverview = {
+  summary: ResolutionSummaryStats;
+  histogram: HistogramRow[];
+};
+
 // ─── Server Actions ───────────────────────────────────────────────────────────
 
 
@@ -287,22 +292,13 @@ export async function getResolutionTimeHistogram(
   return histogram;
 }
 
-// Combined action — fires stats + overdue + summary + histogram in parallel.
-// Fetches ALL overdue rows so the client can paginate instantly.
-export async function getResponseTimeAll(
+export async function getResponseTimeOverview(
   filters: FilterState,
-): Promise<{
-  stats: ResolutionStatRow[];
-  overdue: OverdueTicketsResult;
-  summary: ResolutionSummaryStats;
-  histogram: HistogramRow[];
-}> {
-  const [stats, overdue, summary, histogram] = await Promise.all([
-    getResolutionTimeStats(filters),
-    getOverdueTickets(filters, { page: 1, pageSize: 10000 }),
+): Promise<ResponseTimeOverview> {
+  const [summary, histogram] = await Promise.all([
     getResponseTimeSummary(filters),
     getResolutionTimeHistogram(filters),
   ]);
 
-  return { stats, overdue, summary, histogram };
+  return { summary, histogram };
 }
