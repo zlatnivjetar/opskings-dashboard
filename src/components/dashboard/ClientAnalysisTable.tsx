@@ -14,15 +14,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { MultiSelectFilter, type SelectOption } from '@/components/filters/MultiSelectFilter';
 import { PlanBadge } from '@/components/ui/plan-badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowUp, ArrowDown, ArrowUpDown, ListFilter } from 'lucide-react';
+import { ArrowUp, ArrowDown, ArrowUpDown, ListFilter, Search, X } from 'lucide-react';
 import {
   type ClientAnalysisResult,
   type ClientAnalysisRow,
   type SortableColumn,
 } from '@/lib/queries/clients';
 import { cn } from '@/lib/utils';
+import { MULTI_FILTER_OPERATORS, type FilterOperator, type MultiFilter } from '@/types/filters';
 
 // ─── Formatting ───────────────────────────────────────────────────────────
 
@@ -44,7 +46,7 @@ const formatDate = (iso: string) =>
 
 type ClientFilters = {
   name: string;
-  plan: string;
+  plan?: MultiFilter;
   ticketsMin: number | '';
   ticketsMax: number | '';
   openMin: number | '';
@@ -55,7 +57,7 @@ type ClientFilters = {
 
 const DEFAULT_FILTERS: ClientFilters = {
   name: '',
-  plan: '',
+  plan: undefined,
   ticketsMin: '',
   ticketsMax: '',
   openMin: '',
@@ -78,6 +80,16 @@ const COLUMNS: Column[] = [
 ];
 
 const PAGE_SIZE = 20;
+
+function migratePlanFilter(
+  current: ClientFilters['plan'],
+  operator: FilterOperator,
+): ClientFilters['plan'] {
+  const currentValues = (current?.values ?? []) as string[];
+  const values = operator === 'is' || operator === 'isNot' ? currentValues.slice(0, 1) : currentValues;
+
+  return values.length > 0 ? { operator, values } : undefined;
+}
 
 function compareRows(
   a: ClientAnalysisRow,
@@ -252,11 +264,28 @@ export function ClientAnalysisTable() {
   };
 
   // Client-side filtering
+  const planOptions: SelectOption[] = useMemo(() => {
+    const uniquePlans = new Set((data?.rows ?? []).map((row) => row.planType));
+    return Array.from(uniquePlans).map((plan) => ({ value: plan, label: plan }));
+  }, [data?.rows]);
+
   const filtered = useMemo(() => {
     const allRows = data?.rows ?? [];
     return allRows.filter((r) => {
       if (filters.name && !r.clientName.toLowerCase().includes(filters.name.toLowerCase())) return false;
-      if (filters.plan && !r.planType.toLowerCase().includes(filters.plan.toLowerCase())) return false;
+
+      const planFilterValues = (filters.plan?.values ?? []) as string[];
+      if (planFilterValues.length > 0) {
+        const plan = r.planType;
+        const hasMatch = planFilterValues.includes(plan);
+        const operator = filters.plan?.operator ?? 'isAnyOf';
+
+        if (operator === 'is' && plan !== planFilterValues[0]) return false;
+        if (operator === 'isNot' && plan === planFilterValues[0]) return false;
+        if (operator === 'isAnyOf' && !hasMatch) return false;
+        if (operator === 'isNoneOf' && hasMatch) return false;
+      }
+
       if (filters.ticketsMin !== '' && r.totalTickets < filters.ticketsMin) return false;
       if (filters.ticketsMax !== '' && r.totalTickets > filters.ticketsMax) return false;
       if (filters.openMin !== '' && r.openTickets < filters.openMin) return false;
@@ -288,10 +317,54 @@ export function ClientAnalysisTable() {
     setPage(1);
   };
 
-  const isFiltered = Object.values(filters).some((v) => v !== '');
+  const isFiltered =
+    filters.name.length > 0 ||
+    (filters.plan?.values.length ?? 0) > 0 ||
+    filters.ticketsMin !== '' ||
+    filters.ticketsMax !== '' ||
+    filters.openMin !== '' ||
+    filters.openMax !== '' ||
+    filters.spentMin !== '' ||
+    filters.spentMax !== '';
 
   return (
     <div className="space-y-4">
+      <div className="bg-card border rounded-lg shadow-sm p-3 flex items-center gap-3 flex-wrap">
+        <div className="relative">
+          <Search className="h-3.5 w-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
+          <Input
+            value={filters.name}
+            onChange={(e) => setFilter('name', e.target.value)}
+            placeholder="Search client name"
+            className="h-8 pl-8 pr-8 w-56"
+          />
+          {filters.name.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setFilter('name', '')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              aria-label="Clear client name search"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+
+        <div className="h-6 w-px bg-border shrink-0" aria-hidden="true" />
+
+        <MultiSelectFilter
+          label="Plan"
+          placeholder="Select plan"
+          value={filters.plan}
+          operator={filters.plan?.operator ?? 'isAnyOf'}
+          operatorOptions={MULTI_FILTER_OPERATORS}
+          options={planOptions}
+          onOperatorChange={(operator) => setFilter('plan', migratePlanFilter(filters.plan, operator))}
+          onChange={(value) => setFilter('plan', value)}
+          onClear={() => setFilter('plan', undefined)}
+        />
+      </div>
+
       <Card className="overflow-hidden p-0">
         <Table>
           <TableHeader>
@@ -314,13 +387,6 @@ export function ClientAnalysisTable() {
                         label="Client Name"
                         value={filters.name}
                         onChange={(v) => setFilter('name', v)}
-                      />
-                    )}
-                    {col.key === 'planType' && (
-                      <TextFilterPopover
-                        label="Plan"
-                        value={filters.plan}
-                        onChange={(v) => setFilter('plan', v)}
                       />
                     )}
                     {col.key === 'totalTickets' && (
