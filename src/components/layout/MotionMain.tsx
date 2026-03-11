@@ -7,7 +7,7 @@ export function MotionMain({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   return (
     <main className="flex-1 overflow-y-auto">
-      <AnimatePresence mode="wait" initial={false}>
+      <AnimatePresence mode="popLayout" initial={false}>
         <motion.div
           key={pathname}
           initial={{ opacity: 0 }}
