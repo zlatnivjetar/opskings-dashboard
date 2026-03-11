@@ -343,6 +343,20 @@ function computePreviousFilters(filters: FilterState): FilterState | null {
   return null; // onOrAfter / onOrBefore — unbounded, skip comparison
 }
 
+
+export async function getDashboardSummaryWithComparison(filters: FilterState): Promise<{
+  summary: DashboardSummary;
+  previousSummary: DashboardSummary | null;
+}> {
+  const prevFilters = computePreviousFilters(filters);
+  const [summary, previousSummary] = await Promise.all([
+    getDashboardSummary(filters),
+    prevFilters ? getDashboardSummary(prevFilters) : Promise.resolve(null),
+  ]);
+
+  return { summary, previousSummary };
+}
+
 export type DashboardAllWithComparison = {
   summary: DashboardSummary;
   ticketsOverTime: TicketsOverTimeRow[];
