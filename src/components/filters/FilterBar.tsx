@@ -60,7 +60,7 @@ export function FilterBar({
       allowedKeys.includes('priority'));
 
   return (
-    <div className="bg-card border rounded-lg p-3 flex items-center gap-3 flex-wrap">
+    <div className="bg-card border rounded-lg shadow-sm p-3 flex items-center gap-3 flex-wrap">
       {allowedKeys.includes('date') && (
         <DateFilter
           value={filters.date}
