@@ -11,7 +11,7 @@ import { useFilterState } from '@/hooks/use-filter-state';
 import { getMyTickets } from '@/lib/queries/portal';
 
 function PortalInner() {
-  const { filters, clearFilters } = useFilterState();
+  const { filters } = useFilterState();
 
   const page = 1;
   const pageSize = 20;
@@ -22,7 +22,6 @@ function PortalInner() {
   });
 
   const rows = data?.rows ?? [];
-  const totalPages = data?.totalPages ?? 1;
 
   return (
     <div className="p-6 space-y-4">
@@ -40,9 +39,9 @@ function PortalInner() {
       />
 
       {isLoading ? (
-        <div className="border rounded-lg overflow-hidden">
+        <div className="border rounded-lg overflow-hidden bg-white">
           <table className="w-full text-sm">
-            <thead className="bg-muted/50">
+            <thead className="bg-white border-b">
               <tr>
                 <th className="text-left px-4 py-3 font-medium">Title</th>
                 <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">Type</th>
@@ -73,9 +72,9 @@ function PortalInner() {
           .
         </p>
       ) : (
-        <div className="border rounded-lg overflow-hidden">
+        <div className="border rounded-lg overflow-hidden bg-white">
           <table className="w-full text-sm">
-            <thead className="bg-muted/50">
+            <thead className="bg-white border-b">
               <tr>
                 <th className="text-left px-4 py-3 font-medium">Title</th>
                 <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">Type</th>
