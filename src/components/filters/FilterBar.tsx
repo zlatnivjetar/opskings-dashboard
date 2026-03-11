@@ -8,13 +8,28 @@ import { useFilterState } from '@/hooks/use-filter-state';
 import { DateFilter } from './DateFilter';
 import { MultiSelectFilter, type SelectOption } from './MultiSelectFilter';
 import { getReferenceData } from '@/lib/actions/reference';
-import { PRIORITY_OPTIONS } from '@/types/filters';
+import {
+  DATE_FILTER_OPERATORS,
+  MULTI_FILTER_OPERATORS,
+  PRIORITY_OPTIONS,
+  type DateOperator,
+} from '@/types/filters';
 import type { FilterState } from '@/types/filters';
 import { formatUsername } from '@/lib/format';
 
 type FilterKey = keyof FilterState;
 
 const ALL_FILTER_KEYS: FilterKey[] = ['date', 'teamMember', 'ticketType', 'priority'];
+
+function migrateDateFilter(
+  current: FilterState['date'],
+  operator: DateOperator,
+): NonNullable<FilterState['date']> {
+  return {
+    operator,
+    value: current?.value ?? new Date().toISOString().slice(0, 10),
+  };
+}
 
 export function FilterBar({
   allowedFilters,
@@ -64,6 +79,8 @@ export function FilterBar({
       {allowedKeys.includes('date') && (
         <DateFilter
           value={filters.date}
+          operatorOptions={DATE_FILTER_OPERATORS}
+          onOperatorChange={(operator) => setFilter('date', migrateDateFilter(filters.date, operator))}
           onChange={(v) => setFilter('date', v)}
           onClear={() => removeFilter('date')}
         />
@@ -78,6 +95,7 @@ export function FilterBar({
           label="Assignees"
           placeholder="Assignees..."
           value={filters.teamMember}
+          operatorOptions={MULTI_FILTER_OPERATORS}
           options={tmOptions}
           onChange={(v) => setFilter('teamMember', v)}
           onClear={() => removeFilter('teamMember')}
@@ -89,6 +107,7 @@ export function FilterBar({
           label="Types"
           placeholder="Ticket types..."
           value={filters.ticketType}
+          operatorOptions={MULTI_FILTER_OPERATORS}
           options={ttOptions}
           onChange={(v) => setFilter('ticketType', v)}
           onClear={() => removeFilter('ticketType')}
@@ -100,6 +119,7 @@ export function FilterBar({
           label="Priority"
           placeholder="Priorities..."
           value={filters.priority}
+          operatorOptions={MULTI_FILTER_OPERATORS}
           options={priorityOptions}
           onChange={(v) => setFilter('priority', v)}
           onClear={() => removeFilter('priority')}

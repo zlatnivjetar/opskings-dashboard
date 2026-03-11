@@ -14,18 +14,10 @@ export function applyTicketFilters(
   const conditions: (SQL | undefined)[] = [...baseConditions];
 
   if (filters.date) {
-    const { operator, value, valueTo } = filters.date;
+    const { operator, value } = filters.date;
     switch (operator) {
       case 'exact':
         conditions.push(sql`date_trunc('day', ${tickets.createdAt}) = ${value}::date`);
-        break;
-      case 'range':
-        conditions.push(
-          and(
-            gte(tickets.createdAt, new Date(value)),
-            lte(tickets.createdAt, endOfDay(valueTo ?? value)),
-          ),
-        );
         break;
       case 'onOrBefore':
         conditions.push(lte(tickets.createdAt, endOfDay(value)));
