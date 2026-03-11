@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import {
   useReactTable,
   getCoreRowModel,
@@ -189,16 +188,13 @@ function fmt(val: number | null, decimals = 1): string {
   return val.toFixed(decimals);
 }
 
-export function TeamPerformanceTable() {
-  const { data = [], isLoading } = useQuery({
-    queryKey: ['team', 'performance'],
-    queryFn: async () => {
-      const res = await fetch('/api/team/performance');
-      if (!res.ok) throw new Error(`Request failed: ${res.status}`);
-      return res.json() as Promise<TeamPerformanceRow[]>;
-    },
-    staleTime: 30_000,
-  });
+export function TeamPerformanceTable({
+  data = [],
+  isLoading = false,
+}: {
+  data?: TeamPerformanceRow[];
+  isLoading?: boolean;
+}) {
 
   const topPerformerId = useMemo(() => findTopPerformerId(data), [data]);
 

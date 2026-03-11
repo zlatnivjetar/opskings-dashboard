@@ -59,21 +59,12 @@ function buildChartRows(
     }));
   }
 
-  const fastestRows = getTopByFastest(rows, boundedLimit);
-  const slowestTopTime = fastestRows.reduce(
-    (max, row) => Math.max(max, row.avgResolutionHours ?? 0),
-    0,
-  );
-
-  return fastestRows.map((row) => {
-    const avgHours = row.avgResolutionHours ?? 0;
-    return {
-      id: row.id,
-      name: formatUsername(row.username),
-      value: Math.max(0, slowestTopTime - avgHours),
-      valueLabel: formatHours(avgHours),
-    };
-  });
+  return getTopByFastest(rows, boundedLimit).map((row) => ({
+    id: row.id,
+    name: formatUsername(row.username),
+    value: row.avgResolutionHours ?? 0,
+    valueLabel: formatHours(row.avgResolutionHours ?? 0),
+  }));
 }
 
 export function TopPerformersBarChart({ limit = 3 }: { limit?: number }) {
