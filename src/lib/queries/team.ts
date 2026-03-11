@@ -3,6 +3,11 @@
 import { sql } from 'drizzle-orm';
 import { withRLS } from '@/lib/db/rls-client';
 import { getUserContext } from '@/lib/auth/get-user-context';
+import {
+  getTopByFastest as getTopByFastestShared,
+  getTopByRating as getTopByRatingShared,
+  getTopByResolved as getTopByResolvedShared,
+} from '@/lib/team-performance-ranking';
 
 export type TeamPerformanceRow = {
   id: number;
@@ -15,6 +20,18 @@ export type TeamPerformanceRow = {
   avgResolutionHours: number | null;
   avgRating: number | null;
 };
+
+export function getTopByRating(rows: TeamPerformanceRow[], limit: number): TeamPerformanceRow[] {
+  return getTopByRatingShared(rows, limit);
+}
+
+export function getTopByResolved(rows: TeamPerformanceRow[], limit: number): TeamPerformanceRow[] {
+  return getTopByResolvedShared(rows, limit);
+}
+
+export function getTopByFastest(rows: TeamPerformanceRow[], limit: number): TeamPerformanceRow[] {
+  return getTopByFastestShared(rows, limit);
+}
 
 export async function getTeamPerformance(): Promise<TeamPerformanceRow[]> {
   const ctx = await getUserContext();
