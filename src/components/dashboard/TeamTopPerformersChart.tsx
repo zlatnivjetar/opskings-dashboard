@@ -95,7 +95,7 @@ export function TeamTopPerformersChart({
             const width =
               metric === 'fastest'
                 ? maxValue > 0 && metricValue != null
-                  ? (1 - metricValue / maxValue) * 100
+                  ? (metricValue / maxValue) * 100
                   : 0
                 : maxValue > 0 && metricValue != null
                   ? (metricValue / maxValue) * 100
@@ -131,11 +131,6 @@ export function TeamTopPerformersChart({
               </div>
             );
           })
-        )}
-        {metric === 'fastest' && (
-          <p className="text-xs text-muted-foreground">
-            Lower is better; based on average resolution time.
-          </p>
         )}
       </CardContent>
     </Card>
