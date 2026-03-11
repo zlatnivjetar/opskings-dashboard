@@ -1,8 +1,10 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 import { getTicketDetail } from '@/lib/queries/portal';
 import { formatUsername, formatDate } from '@/lib/format';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { FeedbackForm } from '@/components/portal/FeedbackForm';
 import { PriorityBadge } from '@/components/ui/priority-badge';
 import { StatusBadge } from '@/components/ui/status-badge';
@@ -27,12 +29,13 @@ export default async function TicketDetailPage({
       {/* Back link */}
       <Link href="/portal">
         <Button variant="ghost" size="sm" className="pl-0">
-          ← My Tickets
+          <ArrowLeft className="size-4" />
+          <span>My Tickets</span>
         </Button>
       </Link>
 
       {/* Ticket header */}
-      <div className="border rounded-lg p-5 space-y-3">
+      <Card className="p-5 space-y-3">
         <h1 className="text-page-title">{ticket.title}</h1>
         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <span>{ticket.typeName}</span>
@@ -48,7 +51,7 @@ export default async function TicketDetailPage({
             </>
           )}
         </div>
-      </div>
+      </Card>
 
       {/* Message thread */}
       <div className="space-y-3">
@@ -85,7 +88,7 @@ export default async function TicketDetailPage({
 
       {/* Existing feedback */}
       {feedback && (
-        <div className="border rounded-lg p-4 space-y-1">
+        <Card className="p-4 space-y-1">
           <h2 className="font-semibold">Your Feedback</h2>
           <p className="text-sm">
             Rating:{' '}
@@ -94,7 +97,7 @@ export default async function TicketDetailPage({
           {feedback.feedbackText && (
             <p className="text-sm text-muted-foreground">{feedback.feedbackText}</p>
           )}
-        </div>
+        </Card>
       )}
 
       {/* Feedback form — only if resolved and no feedback yet */}
