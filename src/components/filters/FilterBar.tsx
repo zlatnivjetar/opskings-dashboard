@@ -9,10 +9,8 @@ import { DateFilter } from './DateFilter';
 import { MultiSelectFilter, type SelectOption } from './MultiSelectFilter';
 import { getReferenceData } from '@/lib/actions/reference';
 import {
-  DATE_FILTER_OPERATORS,
   MULTI_FILTER_OPERATORS,
   PRIORITY_OPTIONS,
-  type DateOperator,
   type FilterOperator,
 } from '@/types/filters';
 import type { FilterState } from '@/types/filters';
@@ -21,23 +19,6 @@ import { formatUsername } from '@/lib/format';
 type FilterKey = keyof FilterState;
 
 const ALL_FILTER_KEYS: FilterKey[] = ['date', 'teamMember', 'ticketType', 'priority'];
-
-function migrateDateFilter(current: FilterState['date'], operator: DateOperator): NonNullable<FilterState['date']> {
-  const fallback = current?.value ?? new Date().toISOString().slice(0, 10);
-
-  if (operator === 'range') {
-    return {
-      operator,
-      value: current?.value ?? fallback,
-      valueTo: current?.valueTo ?? current?.value ?? fallback,
-    };
-  }
-
-  return {
-    operator,
-    value: current?.value ?? current?.valueTo ?? fallback,
-  };
-}
 
 function migrateMultiFilter(
   current: FilterState['teamMember'],
@@ -100,8 +81,6 @@ export function FilterBar({
       {allowedKeys.includes('date') && (
         <DateFilter
           value={filters.date}
-          operatorOptions={DATE_FILTER_OPERATORS}
-          onOperatorChange={(operator) => setFilter('date', migrateDateFilter(filters.date, operator))}
           onChange={(v) => setFilter('date', v)}
           onClear={() => removeFilter('date')}
         />

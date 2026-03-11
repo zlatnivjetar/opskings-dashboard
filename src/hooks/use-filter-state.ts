@@ -3,15 +3,12 @@
 import { useCallback, useMemo } from 'react';
 import { useSearchParams, usePathname } from 'next/navigation';
 import {
-  DATE_FILTER_OPERATORS,
   MULTI_FILTER_OPERATORS,
   type FilterState,
-  type DateFilter,
   type MultiFilter,
 } from '@/types/filters';
 
 // URL param keys
-const DF_OP = 'df_op';
 const DF_V = 'df_v';
 const DF_VT = 'df_vt';
 const TM_OP = 'tm_op';
@@ -21,14 +18,7 @@ const TT_V = 'tt_v';
 const PR_OP = 'pr_op';
 const PR_V = 'pr_v';
 
-const DATE_OPERATOR_VALUES = new Set(DATE_FILTER_OPERATORS.map((option) => option.value));
 const MULTI_OPERATOR_VALUES = new Set(MULTI_FILTER_OPERATORS.map((option) => option.value));
-
-function normalizeDateOperator(operator: string | null): DateFilter['operator'] {
-  return operator && DATE_OPERATOR_VALUES.has(operator as DateFilter['operator'])
-    ? (operator as DateFilter['operator'])
-    : 'range';
-}
 
 function normalizeMultiOperator(operator: string | null): MultiFilter['operator'] {
   return operator && MULTI_OPERATOR_VALUES.has(operator as MultiFilter['operator'])
@@ -39,16 +29,13 @@ function normalizeMultiOperator(operator: string | null): MultiFilter['operator'
 export function parseFilters(params: URLSearchParams): FilterState {
   const filters: FilterState = {};
 
-  const dateOp = params.get(DF_OP);
   const dateVal = params.get(DF_V);
   if (dateVal) {
-    const filter: DateFilter = {
-      operator: normalizeDateOperator(dateOp),
+    const dateValTo = params.get(DF_VT);
+    filters.date = {
       value: dateVal,
+      valueTo: dateValTo ?? dateVal,
     };
-    const valTo = params.get(DF_VT);
-    if (valTo) filter.valueTo = valTo;
-    filters.date = filter;
   }
 
   const tmOp = params.get(TM_OP);
@@ -83,9 +70,10 @@ export function serializeFilters(filters: FilterState): string {
   const params = new URLSearchParams();
 
   if (filters.date) {
-    params.set(DF_OP, normalizeDateOperator(filters.date.operator));
     params.set(DF_V, filters.date.value);
-    if (filters.date.valueTo) params.set(DF_VT, filters.date.valueTo);
+    if (filters.date.valueTo) {
+      params.set(DF_VT, filters.date.valueTo);
+    }
   }
 
   if (filters.teamMember) {
