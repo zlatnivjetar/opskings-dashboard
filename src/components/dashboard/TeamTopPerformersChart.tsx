@@ -1,25 +1,40 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ChartTabs } from '@/components/charts/ChartTabs';
 import { type TeamPerformanceRow } from '@/lib/queries/team';
 import { formatUsername } from '@/lib/format';
+import {
+  getTopByFastest,
+  getTopByRating,
+  getTopByResolved,
+} from '@/lib/team-performance-ranking';
+import {
+  formatLeaderboardFastest,
+  formatLeaderboardRating,
+  formatLeaderboardResolved,
+} from '@/lib/team-leaderboard-format';
 
-type LeaderboardRow = TeamPerformanceRow & { score: number };
+type LeaderboardMetric = 'rating' | 'resolved' | 'fastest';
 
-function buildLeaderboard(rows: TeamPerformanceRow[]): LeaderboardRow[] {
-  return rows
-    .map((row) => ({
-      ...row,
-      score: row.resolved + (row.resolutionRate ?? 0) * 2 + (row.avgRating ?? 0) * 20,
-    }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 5);
-}
+const METRIC_OPTIONS: { value: LeaderboardMetric; label: string }[] = [
+  { value: 'rating', label: 'Rating' },
+  { value: 'resolved', label: 'Resolved' },
+  { value: 'fastest', label: 'Fastest' },
+];
+
+const METRIC_TITLES: Record<LeaderboardMetric, string> = {
+  rating: 'Top performers by rating',
+  resolved: 'Top performers by resolved tickets',
+  fastest: 'Top performers by fastest resolution',
+};
 
 export function TeamTopPerformersChart() {
+  const [metric, setMetric] = useState<LeaderboardMetric>('rating');
+
   const { data = [], isLoading } = useQuery({
     queryKey: ['team', 'performance'],
     queryFn: async () => {
@@ -30,14 +45,28 @@ export function TeamTopPerformersChart() {
     staleTime: 30_000,
   });
 
-  const leaderboard = useMemo(() => buildLeaderboard(data), [data]);
-  const maxScore = leaderboard[0]?.score ?? 0;
+  const leaderboard = useMemo(() => {
+    if (metric === 'rating') return getTopByRating(data, 5);
+    if (metric === 'resolved') return getTopByResolved(data, 5);
+    return getTopByFastest(data, 5);
+  }, [data, metric]);
+
+  const maxValue = useMemo(() => {
+    if (metric === 'rating') return leaderboard[0]?.avgRating ?? 0;
+    if (metric === 'resolved') return leaderboard[0]?.resolved ?? 0;
+
+    const values = leaderboard
+      .map((row) => row.avgResolutionHours)
+      .filter((value): value is number => value != null);
+    if (values.length === 0) return 0;
+    return Math.max(...values);
+  }, [leaderboard, metric]);
 
   if (isLoading) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Top Performers Leaderboard</CardTitle>
+          <CardTitle>{METRIC_TITLES[metric]}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -51,14 +80,43 @@ export function TeamTopPerformersChart() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Top Performers Leaderboard</CardTitle>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <CardTitle>{METRIC_TITLES[metric]}</CardTitle>
+          <ChartTabs value={metric} onChange={setMetric} options={METRIC_OPTIONS} />
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {leaderboard.length === 0 ? (
           <p className="text-sm text-muted-foreground">No leaderboard data available.</p>
         ) : (
           leaderboard.map((member, index) => {
-            const width = maxScore > 0 ? (member.score / maxScore) * 100 : 0;
+            const metricValue =
+              metric === 'rating'
+                ? member.avgRating
+                : metric === 'resolved'
+                  ? member.resolved
+                  : member.avgResolutionHours;
+
+            const width =
+              metric === 'fastest'
+                ? maxValue > 0 && metricValue != null
+                  ? (1 - metricValue / maxValue) * 100
+                  : 0
+                : maxValue > 0 && metricValue != null
+                  ? (metricValue / maxValue) * 100
+                  : 0;
+
+            const valueLabel =
+              metric === 'rating'
+                ? metricValue != null
+                  ? formatLeaderboardRating(metricValue)
+                  : '—'
+                : metric === 'resolved'
+                  ? formatLeaderboardResolved(member.resolved)
+                  : metricValue != null
+                    ? formatLeaderboardFastest(metricValue)
+                    : '—';
+
             return (
               <div key={member.id} className="space-y-1.5">
                 <div className="flex items-center justify-between text-sm">
@@ -66,7 +124,7 @@ export function TeamTopPerformersChart() {
                     #{index + 1} {formatUsername(member.username)}
                   </span>
                   <span className="tabular-nums text-muted-foreground">
-                    {member.score.toFixed(1)}
+                    {valueLabel}
                   </span>
                 </div>
                 <div className="h-2 rounded-full bg-muted overflow-hidden">
@@ -78,6 +136,11 @@ export function TeamTopPerformersChart() {
               </div>
             );
           })
+        )}
+        {metric === 'fastest' && (
+          <p className="text-xs text-muted-foreground">
+            Lower is better; based on average resolution time.
+          </p>
         )}
       </CardContent>
     </Card>
