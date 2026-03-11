@@ -1,11 +1,7 @@
-import { and, eq, ne, inArray, notInArray, gte, lte, sql } from 'drizzle-orm';
+import { and, eq, ne, inArray, notInArray, gte, lte } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { tickets } from '@/lib/db/schema';
 import type { FilterState } from '@/types/filters';
-
-function endOfDay(dateStr: string): Date {
-  return new Date(dateStr + 'T23:59:59.999Z');
-}
 
 export function applyTicketFilters(
   baseConditions: (SQL | undefined)[],
@@ -14,18 +10,8 @@ export function applyTicketFilters(
   const conditions: (SQL | undefined)[] = [...baseConditions];
 
   if (filters.date) {
-    const { operator, value } = filters.date;
-    switch (operator) {
-      case 'exact':
-        conditions.push(sql`date_trunc('day', ${tickets.createdAt}) = ${value}::date`);
-        break;
-      case 'onOrBefore':
-        conditions.push(lte(tickets.createdAt, endOfDay(value)));
-        break;
-      case 'onOrAfter':
-        conditions.push(gte(tickets.createdAt, new Date(value)));
-        break;
-    }
+    conditions.push(gte(tickets.createdAt, new Date(filters.date.from + 'T00:00:00.000Z')));
+    conditions.push(lte(tickets.createdAt, new Date(filters.date.to + 'T23:59:59.999Z')));
   }
 
   if (filters.teamMember && filters.teamMember.values.length > 0) {

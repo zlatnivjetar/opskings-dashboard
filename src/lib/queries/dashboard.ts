@@ -66,19 +66,8 @@ function toRLSParams(filters: FilterState): RLSParams {
   let dateTo: string | null = null;
 
   if (filters.date) {
-    const { operator, value } = filters.date;
-    switch (operator) {
-      case 'exact':
-        dateFrom = new Date(value + 'T00:00:00.000Z').toISOString();
-        dateTo = new Date(value + 'T23:59:59.999Z').toISOString();
-        break;
-      case 'onOrAfter':
-        dateFrom = new Date(value).toISOString();
-        break;
-      case 'onOrBefore':
-        dateTo = new Date(value + 'T23:59:59.999Z').toISOString();
-        break;
-    }
+    dateFrom = new Date(filters.date.from + 'T00:00:00.000Z').toISOString();
+    dateTo = new Date(filters.date.to + 'T23:59:59.999Z').toISOString();
   }
 
   return {
@@ -371,16 +360,23 @@ function computePreviousFilters(filters: FilterState): FilterState | null {
   const d = filters.date;
   if (!d) return null;
 
-  if (d.operator === 'exact') {
-    const day = new Date(d.value + 'T00:00:00Z');
-    day.setUTCDate(day.getUTCDate() - 1);
-    return {
-      ...filters,
-      date: { operator: 'exact', value: day.toISOString().split('T')[0] },
-    };
-  }
+  const from = new Date(d.from + 'T00:00:00Z');
+  const to = new Date(d.to + 'T00:00:00Z');
+  const rangeDays = Math.max(1, Math.round((to.getTime() - from.getTime()) / 86_400_000) + 1);
 
-  return null; // onOrAfter / onOrBefore — unbounded, skip comparison
+  const previousTo = new Date(from);
+  previousTo.setUTCDate(previousTo.getUTCDate() - 1);
+
+  const previousFrom = new Date(previousTo);
+  previousFrom.setUTCDate(previousFrom.getUTCDate() - (rangeDays - 1));
+
+  return {
+    ...filters,
+    date: {
+      from: previousFrom.toISOString().split('T')[0],
+      to: previousTo.toISOString().split('T')[0],
+    },
+  };
 }
 
 
