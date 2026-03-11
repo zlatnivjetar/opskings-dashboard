@@ -1,10 +1,11 @@
 // Dot color classes for priority/status/plan badge indicators
 
 export const PRIORITY_STYLES: Record<string, string> = {
-  urgent: 'bg-red-600 dark:bg-red-400',
-  high:   'bg-orange-600 dark:bg-orange-400',
-  medium: 'bg-blue-600 dark:bg-blue-400',
-  low:    'bg-slate-500 dark:bg-slate-400',
+  // Keep badges aligned with chart priority tokens and blue-only dashboard palette
+  urgent: 'bg-blue-700 dark:bg-blue-200',
+  high:   'bg-blue-600 dark:bg-blue-400',
+  medium: 'bg-blue-400 dark:bg-blue-600',
+  low:    'bg-blue-200 dark:bg-blue-700',
 };
 
 export const STATUS_STYLES: Record<string, string> = {
