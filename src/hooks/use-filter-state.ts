@@ -2,7 +2,13 @@
 
 import { useCallback, useMemo } from 'react';
 import { useSearchParams, usePathname } from 'next/navigation';
-import type { FilterState, DateFilter, MultiFilter } from '@/types/filters';
+import {
+  DATE_FILTER_OPERATORS,
+  MULTI_FILTER_OPERATORS,
+  type FilterState,
+  type DateFilter,
+  type MultiFilter,
+} from '@/types/filters';
 
 // URL param keys
 const DF_OP = 'df_op';
@@ -15,14 +21,29 @@ const TT_V = 'tt_v';
 const PR_OP = 'pr_op';
 const PR_V = 'pr_v';
 
-function parseFilters(params: URLSearchParams): FilterState {
+const DATE_OPERATOR_VALUES = new Set(DATE_FILTER_OPERATORS.map((option) => option.value));
+const MULTI_OPERATOR_VALUES = new Set(MULTI_FILTER_OPERATORS.map((option) => option.value));
+
+function normalizeDateOperator(operator: string | null): DateFilter['operator'] {
+  return operator && DATE_OPERATOR_VALUES.has(operator as DateFilter['operator'])
+    ? (operator as DateFilter['operator'])
+    : 'range';
+}
+
+function normalizeMultiOperator(operator: string | null): MultiFilter['operator'] {
+  return operator && MULTI_OPERATOR_VALUES.has(operator as MultiFilter['operator'])
+    ? (operator as MultiFilter['operator'])
+    : 'isAnyOf';
+}
+
+export function parseFilters(params: URLSearchParams): FilterState {
   const filters: FilterState = {};
 
   const dateOp = params.get(DF_OP);
   const dateVal = params.get(DF_V);
-  if (dateOp && dateVal) {
+  if (dateVal) {
     const filter: DateFilter = {
-      operator: dateOp as DateFilter['operator'],
+      operator: normalizeDateOperator(dateOp),
       value: dateVal,
     };
     const valTo = params.get(DF_VT);
@@ -31,56 +52,56 @@ function parseFilters(params: URLSearchParams): FilterState {
   }
 
   const tmOp = params.get(TM_OP);
-  if (tmOp) {
-    const tmVal = params.get(TM_V);
+  const tmVal = params.get(TM_V);
+  if (tmOp || tmVal) {
     const values = tmVal
       ? tmVal.split(',').map(Number).filter((n) => !isNaN(n))
       : [];
-    filters.teamMember = { operator: tmOp as MultiFilter['operator'], values };
+    filters.teamMember = { operator: normalizeMultiOperator(tmOp), values };
   }
 
   const ttOp = params.get(TT_OP);
-  if (ttOp) {
-    const ttVal = params.get(TT_V);
+  const ttVal = params.get(TT_V);
+  if (ttOp || ttVal) {
     const values = ttVal
       ? ttVal.split(',').map(Number).filter((n) => !isNaN(n))
       : [];
-    filters.ticketType = { operator: ttOp as MultiFilter['operator'], values };
+    filters.ticketType = { operator: normalizeMultiOperator(ttOp), values };
   }
 
   const prOp = params.get(PR_OP);
-  if (prOp) {
-    const prVal = params.get(PR_V);
+  const prVal = params.get(PR_V);
+  if (prOp || prVal) {
     const values = prVal ? prVal.split(',').filter(Boolean) : [];
-    filters.priority = { operator: prOp as MultiFilter['operator'], values };
+    filters.priority = { operator: normalizeMultiOperator(prOp), values };
   }
 
   return filters;
 }
 
-function serializeFilters(filters: FilterState): string {
+export function serializeFilters(filters: FilterState): string {
   const params = new URLSearchParams();
 
   if (filters.date) {
-    params.set(DF_OP, filters.date.operator);
+    params.set(DF_OP, normalizeDateOperator(filters.date.operator));
     params.set(DF_V, filters.date.value);
     if (filters.date.valueTo) params.set(DF_VT, filters.date.valueTo);
   }
 
   if (filters.teamMember) {
-    params.set(TM_OP, filters.teamMember.operator);
+    params.set(TM_OP, normalizeMultiOperator(filters.teamMember.operator));
     if (filters.teamMember.values.length > 0)
       params.set(TM_V, filters.teamMember.values.join(','));
   }
 
   if (filters.ticketType) {
-    params.set(TT_OP, filters.ticketType.operator);
+    params.set(TT_OP, normalizeMultiOperator(filters.ticketType.operator));
     if (filters.ticketType.values.length > 0)
       params.set(TT_V, filters.ticketType.values.join(','));
   }
 
   if (filters.priority) {
-    params.set(PR_OP, filters.priority.operator);
+    params.set(PR_OP, normalizeMultiOperator(filters.priority.operator));
     if (filters.priority.values.length > 0)
       params.set(PR_V, filters.priority.values.join(','));
   }

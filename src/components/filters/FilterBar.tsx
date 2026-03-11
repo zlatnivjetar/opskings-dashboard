@@ -8,13 +8,49 @@ import { useFilterState } from '@/hooks/use-filter-state';
 import { DateFilter } from './DateFilter';
 import { MultiSelectFilter, type SelectOption } from './MultiSelectFilter';
 import { getReferenceData } from '@/lib/actions/reference';
-import { PRIORITY_OPTIONS } from '@/types/filters';
+import {
+  DATE_FILTER_OPERATORS,
+  MULTI_FILTER_OPERATORS,
+  PRIORITY_OPTIONS,
+  type DateOperator,
+  type FilterOperator,
+} from '@/types/filters';
 import type { FilterState } from '@/types/filters';
 import { formatUsername } from '@/lib/format';
 
 type FilterKey = keyof FilterState;
 
 const ALL_FILTER_KEYS: FilterKey[] = ['date', 'teamMember', 'ticketType', 'priority'];
+
+function migrateDateFilter(current: FilterState['date'], operator: DateOperator): NonNullable<FilterState['date']> {
+  const fallback = current?.value ?? new Date().toISOString().slice(0, 10);
+
+  if (operator === 'range') {
+    return {
+      operator,
+      value: current?.value ?? fallback,
+      valueTo: current?.valueTo ?? current?.value ?? fallback,
+    };
+  }
+
+  return {
+    operator,
+    value: current?.value ?? current?.valueTo ?? fallback,
+  };
+}
+
+function migrateMultiFilter(
+  current: FilterState['teamMember'],
+  operator: FilterOperator,
+): NonNullable<FilterState['teamMember']> {
+  const currentValues = (current?.values ?? []) as (string | number)[];
+  const values = operator === 'is' || operator === 'isNot' ? currentValues.slice(0, 1) : currentValues;
+
+  return {
+    operator,
+    values: values as number[] | string[],
+  };
+}
 
 export function FilterBar({
   allowedFilters,
@@ -64,6 +100,8 @@ export function FilterBar({
       {allowedKeys.includes('date') && (
         <DateFilter
           value={filters.date}
+          operatorOptions={DATE_FILTER_OPERATORS}
+          onOperatorChange={(operator) => setFilter('date', migrateDateFilter(filters.date, operator))}
           onChange={(v) => setFilter('date', v)}
           onClear={() => removeFilter('date')}
         />
@@ -78,7 +116,12 @@ export function FilterBar({
           label="Assignees"
           placeholder="Assignees..."
           value={filters.teamMember}
+          operator={filters.teamMember?.operator ?? 'isAnyOf'}
+          operatorOptions={MULTI_FILTER_OPERATORS}
           options={tmOptions}
+          onOperatorChange={(operator) =>
+            setFilter('teamMember', migrateMultiFilter(filters.teamMember, operator))
+          }
           onChange={(v) => setFilter('teamMember', v)}
           onClear={() => removeFilter('teamMember')}
         />
@@ -89,7 +132,12 @@ export function FilterBar({
           label="Types"
           placeholder="Ticket types..."
           value={filters.ticketType}
+          operator={filters.ticketType?.operator ?? 'isAnyOf'}
+          operatorOptions={MULTI_FILTER_OPERATORS}
           options={ttOptions}
+          onOperatorChange={(operator) =>
+            setFilter('ticketType', migrateMultiFilter(filters.ticketType, operator))
+          }
           onChange={(v) => setFilter('ticketType', v)}
           onClear={() => removeFilter('ticketType')}
         />
@@ -100,7 +148,12 @@ export function FilterBar({
           label="Priority"
           placeholder="Priorities..."
           value={filters.priority}
+          operator={filters.priority?.operator ?? 'isAnyOf'}
+          operatorOptions={MULTI_FILTER_OPERATORS}
           options={priorityOptions}
+          onOperatorChange={(operator) =>
+            setFilter('priority', migrateMultiFilter(filters.priority, operator))
+          }
           onChange={(v) => setFilter('priority', v)}
           onClear={() => removeFilter('priority')}
         />
