@@ -112,7 +112,7 @@ export function FilterBar({
             <Button
               variant="ghost"
               size="sm"
-              className="h-9 px-3 text-muted-foreground hover:text-foreground"
+              className="h-8 px-3 text-muted-foreground hover:text-foreground"
               onClick={clearFilters}
             >
               <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
