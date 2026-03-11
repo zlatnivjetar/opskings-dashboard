@@ -107,7 +107,7 @@ export async function getMyTickets(params?: {
         id: r.id,
         title: r.title,
         typeName: r.typeName,
-        priority: r.priority,
+        priority: r.priority ?? 'unknown',
         status: r.status ?? 'open',
         createdAt: toIso(r.createdAt),
       })),
