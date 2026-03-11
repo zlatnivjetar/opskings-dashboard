@@ -33,6 +33,7 @@ import { ArrowUp, ArrowDown, ArrowUpDown, ListFilter } from 'lucide-react';
 import { type TeamPerformanceRow } from '@/lib/queries/team';
 import { formatUsername } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { getTopByRating } from '@/lib/team-performance-ranking';
 
 // ─── Custom filter functions ───────────────────────────────────────────────
 
@@ -53,23 +54,8 @@ numberRangeFilter.autoRemove = (val) => {
 // ─── Top performer computation ─────────────────────────────────────────────
 
 function findTopPerformerId(rows: TeamPerformanceRow[]): number | null {
-  const withTickets = rows.filter((r) => r.assigned > 0 && r.resolutionRate != null);
-  if (withTickets.length === 0) return null;
-
-  const maxRate = Math.max(...withTickets.map((r) => r.resolutionRate!));
-  const ratingsWithValues = rows.filter((r) => r.avgRating != null).map((r) => r.avgRating!);
-  const avgRating =
-    ratingsWithValues.length > 0
-      ? ratingsWithValues.reduce((a, b) => a + b, 0) / ratingsWithValues.length
-      : 0;
-
-  const candidates = withTickets.filter(
-    (r) => r.resolutionRate === maxRate && (r.avgRating ?? 0) >= avgRating
-  );
-  if (candidates.length === 0) return null;
-
-  candidates.sort((a, b) => (b.avgRating ?? 0) - (a.avgRating ?? 0));
-  return candidates[0].id;
+  const ratingTop3 = getTopByRating(rows, 3);
+  return ratingTop3[0]?.id ?? null;
 }
 
 // ─── Sort icon ────────────────────────────────────────────────────────────
