@@ -11,13 +11,6 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import type { FilterOperator, MultiFilter as MultiFilterType } from '@/types/filters';
 
@@ -75,19 +68,6 @@ export function MultiSelectFilter({
 
   return (
     <div className="inline-flex items-center gap-1">
-      <Select value={operator} onValueChange={(next) => onOperatorChange(next as FilterOperator)}>
-        <SelectTrigger className="h-8 w-[120px] bg-secondary/50 hover:bg-secondary border text-sm">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent align="start">
-          {operatorOptions.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <button
@@ -100,7 +80,24 @@ export function MultiSelectFilter({
             <ChevronDown className="h-3.5 w-3.5 opacity-50 shrink-0" />
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-64 p-2" align="start">
+        <PopoverContent className="w-72 p-2" align="start">
+          <div className="mb-2 grid grid-cols-2 gap-1">
+            {operatorOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => onOperatorChange(option.value)}
+                className={cn(
+                  'h-8 rounded-md border px-2 text-sm text-left transition-colors',
+                  option.value === operator
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-background hover:bg-accent',
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
           <Command>
             <CommandInput placeholder={`Search ${label.toLowerCase()}…`} />
             <CommandList>

@@ -25,17 +25,9 @@ const ALL_FILTER_KEYS: FilterKey[] = ['date', 'teamMember', 'ticketType', 'prior
 function migrateDateFilter(current: FilterState['date'], operator: DateOperator): NonNullable<FilterState['date']> {
   const fallback = current?.value ?? new Date().toISOString().slice(0, 10);
 
-  if (operator === 'range') {
-    return {
-      operator,
-      value: current?.value ?? fallback,
-      valueTo: current?.valueTo ?? current?.value ?? fallback,
-    };
-  }
-
   return {
     operator,
-    value: current?.value ?? current?.valueTo ?? fallback,
+    value: current?.value ?? fallback,
   };
 }
 
