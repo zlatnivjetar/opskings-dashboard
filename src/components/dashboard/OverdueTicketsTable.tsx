@@ -81,7 +81,7 @@ export function OverdueTicketsTable({
                     <PriorityBadge priority={row.priority} />
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-caption">{formatDate(row.createdAt)}</TableCell>
-                  <TableCell className="text-right text-sm">{fmt(row.actualHours)}</TableCell>
+                  <TableCell className="text-right text-sm text-muted-foreground">{fmt(row.actualHours)}</TableCell>
                   <TableCell className="text-right text-sm text-muted-foreground">{fmt(row.expectedHours)}</TableCell>
                   <TableCell className="text-right text-sm font-bold">+{fmt(row.excessHours)}</TableCell>
                 </TableRow>
