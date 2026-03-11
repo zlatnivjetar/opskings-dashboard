@@ -59,8 +59,8 @@ export function SidebarNav({ role, collapsed = false }: { role: string; collapse
                   href={href}
                   prefetch={false}
                   className={cn(
-                    'relative flex items-center rounded-md text-sm font-medium transition-colors',
-                    collapsed ? 'justify-center py-2 w-full' : 'px-3 py-1.5',
+                    'relative flex items-center text-sm font-medium transition-colors',
+                    collapsed ? 'justify-center py-2 w-full rounded-md' : 'px-3 py-1.5 rounded-r-md',
                     isActive
                       ? 'text-sidebar-accent-foreground'
                       : 'text-sidebar-foreground hover:text-sidebar-accent-foreground',
@@ -69,7 +69,17 @@ export function SidebarNav({ role, collapsed = false }: { role: string; collapse
                   {isActive && (
                     <motion.span
                       layoutId="active-bg"
-                      className="absolute inset-0 rounded-md bg-sidebar-accent"
+                      className={cn(
+                        'absolute inset-0 bg-sidebar-accent',
+                        collapsed ? 'rounded-md' : 'rounded-r-md',
+                      )}
+                      transition={{ type: 'spring', bounce: 0.15, duration: 0.3 }}
+                    />
+                  )}
+                  {isActive && !collapsed && (
+                    <motion.span
+                      layoutId="active-indicator"
+                      className="absolute left-0 top-0.5 bottom-0.5 w-[3px] bg-primary rounded-r-full"
                       transition={{ type: 'spring', bounce: 0.15, duration: 0.3 }}
                     />
                   )}

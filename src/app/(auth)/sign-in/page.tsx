@@ -35,7 +35,7 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4 bg-gradient-to-br from-background to-card">
+    <div className="flex min-h-screen items-center justify-center p-4 bg-background">
       <div className="w-full max-w-sm space-y-6">
         <div className="flex flex-col items-center gap-2">
           <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary text-primary-foreground">

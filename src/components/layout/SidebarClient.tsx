@@ -102,7 +102,7 @@ export function SidebarClient({ name, email, role, initials }: Props) {
             </div>
           ) : (
             <>
-              <div className="flex items-start gap-3 p-2 rounded-lg bg-sidebar-accent/50">
+              <div className="flex items-start gap-3 p-2 rounded-lg bg-background border border-border">
                 <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-xs font-semibold shrink-0">
                   {initials}
                 </div>
