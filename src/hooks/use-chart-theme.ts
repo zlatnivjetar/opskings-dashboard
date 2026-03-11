@@ -21,11 +21,11 @@ const LIGHT_COLORS = {
   inProgress: '#d08800',
   actual: '#5b5fc7',
   expected: '#7898b8',
-  // Priority — blue 900 / 600 / 300 / 100
-  urgent: '#1e3a8a',
-  high: '#2563eb',
-  medium: '#93c5fd',
-  low: '#dbeafe',
+  // Priority semantics (consistent across themes): urgent / high / medium / low
+  urgent: '#dc2626',
+  high: '#ea580c',
+  medium: '#2563eb',
+  low: '#64748b',
   // Tooltip
   tooltipBg: '#ffffff',
   tooltipBorder: '#e5e7eb',
@@ -52,11 +52,11 @@ const DARK_COLORS = {
   inProgress: '#f5c842',
   actual: '#7b7ff0',
   expected: '#b0c8e0',
-  // Priority — blue 100 / 400 / 700 / 900 (reversed for dark bg)
-  urgent: '#dbeafe',
-  high: '#60a5fa',
-  medium: '#1d4ed8',
-  low: '#1e3a8a',
+  // Priority semantics (same mapping as light mode, dark-tuned tones)
+  urgent: '#f87171',
+  high: '#fb923c',
+  medium: '#60a5fa',
+  low: '#94a3b8',
   tooltipBg: '#1e1f2e',
   tooltipBorder: 'rgba(255,255,255,0.12)',
   tooltipText: '#f3f4f6',
