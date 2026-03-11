@@ -5,7 +5,7 @@ import { adminDb } from '@/lib/db';
 import { ticketTypes, tickets } from '@/lib/db/schema';
 import { withRLS } from '@/lib/db/rls-client';
 import { applyTicketFilters } from '@/lib/queries/filters';
-import { getUserContext } from '@/lib/auth/get-user-context';
+import { getUserContext, type UserContext } from '@/lib/auth/get-user-context';
 import type { FilterState, MultiFilter } from '@/types/filters';
 
 // ─── Param serialisation (date + team member only) ────────────────────────────
@@ -104,10 +104,11 @@ export type ResponseTimeOverview = {
 
 export async function getResponseTimeSummary(
   filters: FilterState,
+  ctx?: UserContext,
 ): Promise<ResolutionSummaryStats> {
-  const ctx = await getUserContext();
+  const resolvedCtx = ctx ?? (await getUserContext());
 
-  return withRLS(ctx, async (tx) => {
+  return withRLS(resolvedCtx, async (tx) => {
     const whereClause = applyTicketFilters(
       [eq(tickets.status, 'resolved')],
       { date: filters.date, teamMember: filters.teamMember },
@@ -132,8 +133,9 @@ export async function getResponseTimeSummary(
 
 export async function getResolutionTimeStats(
   filters: FilterState,
+  ctx?: UserContext,
 ): Promise<ResolutionStatRow[]> {
-  const ctx = await getUserContext();
+  const resolvedCtx = ctx ?? (await getUserContext());
   const p = toRTParams(filters);
 
   const rows = await adminDb.execute<{
@@ -145,10 +147,10 @@ export async function getResolutionTimeStats(
     expected_hours: string | null;
   }>(sql`
     SELECT * FROM get_resolution_time_stats_rls(
-      ${ctx.userId},
-      ${ctx.role},
-      ${ctx.clientId ? String(ctx.clientId) : ''},
-      ${ctx.teamMemberId ? String(ctx.teamMemberId) : ''},
+      ${resolvedCtx.userId},
+      ${resolvedCtx.role},
+      ${resolvedCtx.clientId ? String(resolvedCtx.clientId) : ''},
+      ${resolvedCtx.teamMemberId ? String(resolvedCtx.teamMemberId) : ''},
       ${p.dateFrom}::timestamptz,
       ${p.dateTo}::timestamptz,
       ${p.assignedInclude}::int[],
@@ -169,8 +171,9 @@ export async function getResolutionTimeStats(
 export async function getOverdueTickets(
   filters: FilterState,
   params: { page?: number; pageSize?: number } = {},
+  ctx?: UserContext,
 ): Promise<OverdueTicketsResult> {
-  const ctx = await getUserContext();
+  const resolvedCtx = ctx ?? (await getUserContext());
   const p = toRTParams(filters);
   const { page = 1, pageSize = 20 } = params;
 
@@ -187,10 +190,10 @@ export async function getOverdueTickets(
     full_count: string;
   }>(sql`
     SELECT * FROM get_overdue_tickets_rls(
-      ${ctx.userId},
-      ${ctx.role},
-      ${ctx.clientId ? String(ctx.clientId) : ''},
-      ${ctx.teamMemberId ? String(ctx.teamMemberId) : ''},
+      ${resolvedCtx.userId},
+      ${resolvedCtx.role},
+      ${resolvedCtx.clientId ? String(resolvedCtx.clientId) : ''},
+      ${resolvedCtx.teamMemberId ? String(resolvedCtx.teamMemberId) : ''},
       ${p.dateFrom}::timestamptz,
       ${p.dateTo}::timestamptz,
       ${p.assignedInclude}::int[],
@@ -222,10 +225,11 @@ export async function getOverdueTickets(
 
 export async function getOverdueByPriority(
   filters: FilterState,
+  ctx?: UserContext,
 ): Promise<OverdueByPriorityRow[]> {
-  const ctx = await getUserContext();
+  const resolvedCtx = ctx ?? (await getUserContext());
 
-  return withRLS(ctx, async (tx) => {
+  return withRLS(resolvedCtx, async (tx) => {
     const whereClause = applyTicketFilters(
       [eq(tickets.status, 'resolved'), isNotNull(tickets.resolvedAt)],
       { date: filters.date, teamMember: filters.teamMember },
@@ -274,10 +278,11 @@ function emptyHistogram(): HistogramRow[] {
 
 export async function getResolutionTimeHistogram(
   filters: FilterState,
+  ctx?: UserContext,
 ): Promise<HistogramRow[]> {
-  const ctx = await getUserContext();
+  const resolvedCtx = ctx ?? (await getUserContext());
 
-  const histogramRows = await withRLS(ctx, async (tx) => {
+  const histogramRows = await withRLS(resolvedCtx, async (tx) => {
     const whereClause = applyTicketFilters(
       [eq(tickets.status, 'resolved'), sql`${tickets.resolvedAt} IS NOT NULL`],
       { date: filters.date, teamMember: filters.teamMember },
@@ -322,11 +327,30 @@ export async function getResolutionTimeHistogram(
 
 export async function getResponseTimeOverview(
   filters: FilterState,
+  ctx?: UserContext,
 ): Promise<ResponseTimeOverview> {
   const [summary, histogram] = await Promise.all([
-    getResponseTimeSummary(filters),
-    getResolutionTimeHistogram(filters),
+    getResponseTimeSummary(filters, ctx),
+    getResolutionTimeHistogram(filters, ctx),
   ]);
 
   return { summary, histogram };
+}
+
+
+export type ResponseTimeAll = {
+  overview: ResponseTimeOverview;
+  stats: ResolutionStatRow[];
+  overdueByPriority: OverdueByPriorityRow[];
+};
+
+export async function getResponseTimeAll(filters: FilterState): Promise<ResponseTimeAll> {
+  const ctx = await getUserContext();
+  const [overview, stats, overdueByPriority] = await Promise.all([
+    getResponseTimeOverview(filters, ctx),
+    getResolutionTimeStats(filters, ctx),
+    getOverdueByPriority(filters, ctx),
+  ]);
+
+  return { overview, stats, overdueByPriority };
 }
