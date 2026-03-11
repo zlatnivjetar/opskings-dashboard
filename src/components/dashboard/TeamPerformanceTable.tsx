@@ -21,7 +21,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,7 +31,6 @@ import { ArrowUp, ArrowDown, ArrowUpDown, ListFilter } from 'lucide-react';
 import { type TeamPerformanceRow } from '@/lib/queries/team';
 import { formatUsername } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import { getTopByRating } from '@/lib/team-performance-ranking';
 
 // ─── Custom filter functions ───────────────────────────────────────────────
 
@@ -49,13 +47,6 @@ numberRangeFilter.autoRemove = (val) => {
   const [min, max] = val as [number | '', number | ''];
   return min === '' && max === '';
 };
-
-// ─── Top performer computation ─────────────────────────────────────────────
-
-function findTopPerformerId(rows: TeamPerformanceRow[]): number | null {
-  const ratingTop3 = getTopByRating(rows, 3);
-  return ratingTop3[0]?.id ?? null;
-}
 
 // ─── Sort icon ────────────────────────────────────────────────────────────
 
@@ -195,9 +186,6 @@ export function TeamPerformanceTable({
   data?: TeamPerformanceRow[];
   isLoading?: boolean;
 }) {
-
-  const topPerformerId = useMemo(() => findTopPerformerId(data), [data]);
-
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
@@ -207,16 +195,7 @@ export function TeamPerformanceTable({
         accessorKey: 'username',
         header: 'Name',
         filterFn: 'includesString',
-        cell: ({ row }) => (
-          <div className="flex items-center gap-2">
-            <span>{formatUsername(row.original.username)}</span>
-            {row.original.id === topPerformerId && (
-              <Badge className="text-[10px] px-1.5 py-0 bg-success/15 text-success border-success/30 border">
-                Top Performer
-              </Badge>
-            )}
-          </div>
-        ),
+        cell: ({ row }) => <span>{formatUsername(row.original.username)}</span>,
       },
       {
         accessorKey: 'department',
@@ -272,7 +251,7 @@ export function TeamPerformanceTable({
         cell: ({ getValue }) => <StatusBadge status={getValue<string>()} />,
       },
     ],
-    [topPerformerId]
+    []
   );
 
   // eslint-disable-next-line react-hooks/incompatible-library
@@ -355,12 +334,7 @@ export function TeamPerformanceTable({
               </TableRow>
             ) : (
               table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  className={
-                    row.original.id === topPerformerId ? 'bg-success/10' : ''
-                  }
-                >
+                <TableRow key={row.id}>
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
