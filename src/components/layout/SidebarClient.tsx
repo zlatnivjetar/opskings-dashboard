@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Crown, PanelLeftClose, PanelLeftOpen, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { authClient } from '@/lib/auth/auth-client';
-import { SidebarNav } from './SidebarNav';
+import { getSidebarRouteHrefs, SidebarNav } from './SidebarNav';
 import { SignOutButton } from '@/components/portal/SignOutButton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -17,13 +17,22 @@ type Props = {
 };
 
 export function SidebarClient({ name, email, role, initials }: Props) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('sidebar-collapsed') === 'true';
+  });
   const router = useRouter();
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
+  const prefetchRoutes = useMemo(
+    () => getSidebarRouteHrefs(role).filter((href) => href !== (role === 'team_member' ? '/dashboard' : '/portal')),
+    [role],
+  );
+
   useEffect(() => {
-    if (localStorage.getItem('sidebar-collapsed') === 'true') setCollapsed(true);
-  }, []);
+    prefetchRoutes.forEach((href) => {
+      router.prefetch(href);
+    });
+  }, [prefetchRoutes, router]);
 
   const toggle = () =>
     setCollapsed((prev) => {

@@ -33,6 +33,11 @@ const CLIENT_CATEGORIES: NavCategory[] = [
   },
 ];
 
+export function getSidebarRouteHrefs(role: string): string[] {
+  const categories = role === 'team_member' ? TEAM_MEMBER_CATEGORIES : CLIENT_CATEGORIES;
+  return categories.flatMap(({ items }) => items.map(({ href }) => href));
+}
+
 export function SidebarNav({ role, collapsed = false }: { role: string; collapsed?: boolean }) {
   const pathname = usePathname();
   const categories = role === 'team_member' ? TEAM_MEMBER_CATEGORIES : CLIENT_CATEGORIES;
