@@ -221,15 +221,6 @@ export function TeamPerformanceTable({
         },
       },
       {
-        accessorKey: 'resolutionRate',
-        header: 'Resolution Rate',
-        filterFn: numberRangeFilter,
-        cell: ({ getValue }) => {
-          const v = getValue<number | null>();
-          return v == null ? '—' : `${v.toFixed(1)}%`;
-        },
-      },
-      {
         accessorKey: 'avgResolutionHours',
         header: 'Avg Time (hrs)',
         filterFn: numberRangeFilter,
@@ -267,7 +258,7 @@ export function TeamPerformanceTable({
   });
 
   const textCols = new Set(['username', 'department', 'status']);
-  const numericCols = new Set(['assigned', 'resolved', 'resolutionRate', 'avgResolutionHours', 'avgRating']);
+  const numericCols = new Set(['assigned', 'resolved', 'avgResolutionHours', 'avgRating']);
 
   if (isLoading) {
     return (
