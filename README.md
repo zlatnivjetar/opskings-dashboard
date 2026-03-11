@@ -4,7 +4,10 @@ A full-stack support analytics dashboard built for the OpsKings development inte
 
 > **[Live Demo](https://opskings-dashboard.vercel.app/)** · **[Video Walkthrough](https://www.loom.com/share/7873fd2b145b49c2af9ae33534d51841)**
 
-<img src="docs/screenshots/dashboard-overview.webp" height="360" />
+<p align="center">
+  <img src="docs/screenshots/dashboard.webp" width="48%" alt="Dashboard (light mode)" />
+  <img src="docs/screenshots/dashboard-black.webp" width="48%" alt="Dashboard (dark mode)" />
+</p>
 
 ---
 
@@ -19,6 +22,7 @@ A full-stack support analytics dashboard built for the OpsKings development inte
 - [Performance Results](#performance-results)
 - [Scaling Strategy](#scaling-strategy)
 - [Screenshots](#screenshots)
+- [UI Refresh Highlights](#ui-refresh-highlights)
 - [Setup & Running Locally](#setup--running-locally)
 - [Environment Variables](#environment-variables)
 - [Assumptions](#assumptions)
@@ -323,13 +327,25 @@ The current setup handles 40k tickets well within all performance targets. Key f
 | View | Screenshot |
 |------|-----------|
 | Sign In | <img src="docs/screenshots/sign-in.webp" height="180" /> |
-| Dashboard Overview | <img src="docs/screenshots/dashboard-overview.webp" height="180" /> |
+| Dashboard (Light) | <img src="docs/screenshots/dashboard.webp" height="180" /> |
+| Dashboard (Dark) | <img src="docs/screenshots/dashboard-black.webp" height="180" /> |
 | Team Performance | <img src="docs/screenshots/team-performance.webp" height="180" /> |
-| Ticket Distribution | <img src="docs/screenshots/distribution.webp" height="180" /> |
 | Client Analysis | <img src="docs/screenshots/client-analysis.webp" height="180" /> |
 | Response Time Analysis | <img src="docs/screenshots/response-time.webp" height="180" /> |
 | Client Portal | <img src="docs/screenshots/portal-tickets.webp" height="180" /> |
 | Ticket Detail + Feedback | <img src="docs/screenshots/ticket-detail.webp" height="180" /> |
+
+---
+
+## UI Refresh Highlights
+
+Comparing the older screenshots (dashboard, response time, and team pages) with the current version, the product now has a noticeably more polished and consistent UI:
+
+- **Dark mode support**: Added a theme toggle and complete dark theme styling for analytics pages, not just isolated components.
+- **Cohesive blue-first palette**: Replaced the harsher mixed colors with a cleaner blue spectrum across charts, badges, highlights, and navigation states.
+- **Cleaner information hierarchy**: Improved typography scale/weight and card structure so KPIs, tables, and chart summaries are easier to scan.
+- **More consistent filters and controls**: Unified filter bar styling, spacing, and control shapes across pages (dashboard, response time, team performance).
+- **Refined layout and navigation**: Sidebar, top controls, and content containers now feel more balanced and modern, reducing visual clutter from the earlier version.
 
 ---
 
