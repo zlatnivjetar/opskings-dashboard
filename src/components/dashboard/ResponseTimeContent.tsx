@@ -21,6 +21,7 @@ import { useFilterState } from '@/hooks/use-filter-state';
 import { formatCompact, formatHours } from '@/lib/format';
 import { serializeFilters } from '@/lib/api/filter-state';
 import type {
+  OverdueByPriorityRow,
   OverdueTicketsResult,
   ResponseTimeOverview,
   ResolutionStatRow,
@@ -85,6 +86,14 @@ function Inner() {
     placeholderData: (previousData) => previousData,
   });
 
+  const overdueByPriorityQuery = useQuery({
+    queryKey: ['response-time', 'overdue-by-priority', filters],
+    queryFn: () =>
+      getJson<OverdueByPriorityRow[]>(`/api/response-time/overdue-by-priority?filters=${filterParam}`),
+    staleTime: 30_000,
+  });
+
+
   useEffect(() => {
     if (page !== 1 || !overdueQuery.data || overdueQuery.data.totalPages < 2) {
       return;
@@ -123,12 +132,12 @@ function Inner() {
   }, [overviewQuery.data?.histogram]);
 
   const overdueByPriority = useMemo(() => {
-    const result: Record<string, number> = {};
-    for (const row of overdueQuery.data?.rows ?? []) {
-      result[row.priority] = (result[row.priority] ?? 0) + 1;
+    const result: Record<string, number> = { low: 0, medium: 0, high: 0, urgent: 0 };
+    for (const row of overdueByPriorityQuery.data ?? []) {
+      result[row.priority] = row.overdueCount;
     }
     return result;
-  }, [overdueQuery.data?.rows]);
+  }, [overdueByPriorityQuery.data]);
 
   const overduePct =
     overviewQuery.data && overviewQuery.data.summary.resolvedCount > 0 && overdueQuery.data

@@ -1,8 +1,8 @@
 'use server';
 
-import { sql, eq } from 'drizzle-orm';
+import { and, eq, gt, isNotNull, sql } from 'drizzle-orm';
 import { adminDb } from '@/lib/db';
-import { tickets } from '@/lib/db/schema';
+import { ticketTypes, tickets } from '@/lib/db/schema';
 import { withRLS } from '@/lib/db/rls-client';
 import { applyTicketFilters } from '@/lib/queries/filters';
 import { getUserContext } from '@/lib/auth/get-user-context';
@@ -70,6 +70,11 @@ export type ResolutionStatRow = {
   avgHours: number;
   medianHours: number;
   expectedHours: number;
+};
+
+export type OverdueByPriorityRow = {
+  priority: string;
+  overdueCount: number;
 };
 
 export type OverdueTicketRow = {
@@ -228,6 +233,44 @@ export async function getOverdueTickets(
     totalCount,
     totalPages,
   };
+}
+
+export async function getOverdueByPriority(
+  filters: FilterState,
+): Promise<OverdueByPriorityRow[]> {
+  const ctx = await getUserContext();
+
+  return withRLS(ctx, async (tx) => {
+    const whereClause = applyTicketFilters(
+      [eq(tickets.status, 'resolved'), isNotNull(tickets.resolvedAt)],
+      { date: filters.date, teamMember: filters.teamMember },
+    );
+
+    const rows = await tx
+      .select({
+        priority: tickets.priority,
+        overdueCount: sql<number>`COUNT(*)::int`,
+      })
+      .from(tickets)
+      .innerJoin(ticketTypes, eq(tickets.ticketTypeId, ticketTypes.id))
+      .where(
+        and(
+          whereClause,
+          isNotNull(tickets.priority),
+          isNotNull(ticketTypes.avgResolutionHours),
+          gt(
+            sql<number>`EXTRACT(EPOCH FROM (${tickets.resolvedAt} - ${tickets.createdAt})) / 3600.0`,
+            ticketTypes.avgResolutionHours,
+          ),
+        ),
+      )
+      .groupBy(tickets.priority);
+
+    return rows.map((row) => ({
+      priority: row.priority ?? 'unknown',
+      overdueCount: row.overdueCount,
+    }));
+  });
 }
 
 // ─── Histogram helpers ───────────────────────────────────────────────────────
