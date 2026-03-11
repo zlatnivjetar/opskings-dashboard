@@ -5,7 +5,7 @@ import { adminDb } from '@/lib/db';
 import { tickets, ticketTypes } from '@/lib/db/schema';
 import { withRLS } from '@/lib/db/rls-client';
 import { applyTicketFilters } from '@/lib/queries/filters';
-import { getUserContext } from '@/lib/auth/get-user-context';
+import { getUserContext, type UserContext } from '@/lib/auth/get-user-context';
 import type { FilterState, MultiFilter } from '@/types/filters';
 
 export type DashboardSummary = {
@@ -86,8 +86,11 @@ function toRLSParams(filters: FilterState): RLSParams {
 // Server actions — single round-trip via RLS-aware DB functions
 // ---------------------------------------------------------------------------
 
-export async function getDashboardSummary(filters: FilterState): Promise<DashboardSummary> {
-  const ctx = await getUserContext();
+export async function getDashboardSummary(
+  filters: FilterState,
+  ctx?: UserContext,
+): Promise<DashboardSummary> {
+  const resolvedCtx = ctx ?? (await getUserContext());
   const p = toRLSParams(filters);
 
   const rows = await adminDb.execute<{
@@ -97,10 +100,10 @@ export async function getDashboardSummary(filters: FilterState): Promise<Dashboa
     avg_rating: string | null;
   }>(sql`
     SELECT * FROM get_dashboard_summary_rls(
-      ${ctx.userId},
-      ${ctx.role},
-      ${ctx.clientId ? String(ctx.clientId) : ''},
-      ${ctx.teamMemberId ? String(ctx.teamMemberId) : ''},
+      ${resolvedCtx.userId},
+      ${resolvedCtx.role},
+      ${resolvedCtx.clientId ? String(resolvedCtx.clientId) : ''},
+      ${resolvedCtx.teamMemberId ? String(resolvedCtx.teamMemberId) : ''},
       ${p.dateFrom}::timestamptz,
       ${p.dateTo}::timestamptz,
       ${p.assignedInclude}::int[],
@@ -144,13 +147,14 @@ export type DashboardDistributions = {
 
 export async function getDashboardDistributions(
   filters: FilterState,
+  ctx?: UserContext,
 ): Promise<DashboardDistributions> {
-  const ctx = await getUserContext();
+  const resolvedCtx = ctx ?? (await getUserContext());
   const distFilters: FilterState = { date: filters.date, teamMember: filters.teamMember };
   const whereClause = applyTicketFilters([], distFilters);
 
   const [byTypeRows, byPriorityRows] = await Promise.all([
-    withRLS(ctx, (tx) =>
+    withRLS(resolvedCtx, (tx) =>
       tx
         .select({
           ticketTypeId: ticketTypes.id,
@@ -163,7 +167,7 @@ export async function getDashboardDistributions(
         .groupBy(ticketTypes.id, ticketTypes.typeName)
         .orderBy(desc(sql`COUNT(*)`)),
     ),
-    withRLS(ctx, (tx) =>
+    withRLS(resolvedCtx, (tx) =>
       tx
         .select({
           priority: tickets.priority,
@@ -196,12 +200,15 @@ export async function getDashboardDistributions(
     })),
   };
 }
-export async function getTicketsByType(filters: FilterState): Promise<TicketsByTypeRow[]> {
-  const ctx = await getUserContext();
+export async function getTicketsByType(
+  filters: FilterState,
+  ctx?: UserContext,
+): Promise<TicketsByTypeRow[]> {
+  const resolvedCtx = ctx ?? (await getUserContext());
   const distFilters: FilterState = { date: filters.date, teamMember: filters.teamMember };
   const whereClause = applyTicketFilters([], distFilters);
 
-  return withRLS(ctx, async (tx) => {
+  return withRLS(resolvedCtx, async (tx) => {
     const rows = await tx
       .select({
         ticketTypeId: ticketTypes.id,
@@ -224,12 +231,15 @@ export async function getTicketsByType(filters: FilterState): Promise<TicketsByT
   });
 }
 
-export async function getTicketsByPriority(filters: FilterState): Promise<TicketsByPriorityRow[]> {
-  const ctx = await getUserContext();
+export async function getTicketsByPriority(
+  filters: FilterState,
+  ctx?: UserContext,
+): Promise<TicketsByPriorityRow[]> {
+  const resolvedCtx = ctx ?? (await getUserContext());
   const distFilters: FilterState = { date: filters.date, teamMember: filters.teamMember };
   const whereClause = applyTicketFilters([], distFilters);
 
-  return withRLS(ctx, async (tx) => {
+  return withRLS(resolvedCtx, async (tx) => {
     const rows = await tx
       .select({
         priority: tickets.priority,
@@ -257,13 +267,14 @@ export async function getTicketsByPriority(filters: FilterState): Promise<Ticket
 // Replaces the two-separate-useQuery pattern that Next.js serialises.
 export async function getDashboardAll(
   filters: FilterState,
+  ctx?: UserContext,
 ): Promise<{
   summary: DashboardSummary;
   ticketsOverTime: TicketsOverTimeRow[];
   byType: TicketsByTypeRow[];
   byPriority: TicketsByPriorityRow[];
 }> {
-  const ctx = await getUserContext();
+  const resolvedCtx = ctx ?? (await getUserContext());
   const p = toRLSParams(filters);
   const distFilters: FilterState = { date: filters.date, teamMember: filters.teamMember };
   const whereClause = applyTicketFilters([], distFilters);
@@ -276,9 +287,9 @@ export async function getDashboardAll(
       avg_rating: string | null;
     }>(sql`
       SELECT * FROM get_dashboard_summary_rls(
-        ${ctx.userId}, ${ctx.role},
-        ${ctx.clientId ? String(ctx.clientId) : ''},
-        ${ctx.teamMemberId ? String(ctx.teamMemberId) : ''},
+        ${resolvedCtx.userId}, ${resolvedCtx.role},
+        ${resolvedCtx.clientId ? String(resolvedCtx.clientId) : ''},
+        ${resolvedCtx.teamMemberId ? String(resolvedCtx.teamMemberId) : ''},
         ${p.dateFrom}::timestamptz, ${p.dateTo}::timestamptz,
         ${p.assignedInclude}::int[], ${p.assignedExclude}::int[],
         ${p.typeInclude}::int[],    ${p.typeExclude}::int[],
@@ -287,16 +298,16 @@ export async function getDashboardAll(
     `),
     adminDb.execute<{ month: string; created: number; resolved: number }>(sql`
       SELECT * FROM get_tickets_over_time_rls(
-        ${ctx.userId}, ${ctx.role},
-        ${ctx.clientId ? String(ctx.clientId) : ''},
-        ${ctx.teamMemberId ? String(ctx.teamMemberId) : ''},
+        ${resolvedCtx.userId}, ${resolvedCtx.role},
+        ${resolvedCtx.clientId ? String(resolvedCtx.clientId) : ''},
+        ${resolvedCtx.teamMemberId ? String(resolvedCtx.teamMemberId) : ''},
         ${p.dateFrom}::timestamptz, ${p.dateTo}::timestamptz,
         ${p.assignedInclude}::int[], ${p.assignedExclude}::int[],
         ${p.typeInclude}::int[],    ${p.typeExclude}::int[],
         ${p.priorityInclude}::text[], ${p.priorityExclude}::text[]
       )
     `),
-    withRLS(ctx, (tx) =>
+    withRLS(resolvedCtx, (tx) =>
       tx
         .select({
           ticketTypeId: ticketTypes.id,
@@ -309,7 +320,7 @@ export async function getDashboardAll(
         .groupBy(ticketTypes.id, ticketTypes.typeName)
         .orderBy(desc(sql`COUNT(*)`)),
     ),
-    withRLS(ctx, (tx) =>
+    withRLS(resolvedCtx, (tx) =>
       tx
         .select({
           priority: tickets.priority,
@@ -380,14 +391,17 @@ function computePreviousFilters(filters: FilterState): FilterState | null {
 }
 
 
-export async function getDashboardSummaryWithComparison(filters: FilterState): Promise<{
+export async function getDashboardSummaryWithComparison(
+  filters: FilterState,
+  ctx?: UserContext,
+): Promise<{
   summary: DashboardSummary;
   previousSummary: DashboardSummary | null;
 }> {
   const prevFilters = computePreviousFilters(filters);
   const [summary, previousSummary] = await Promise.all([
-    getDashboardSummary(filters),
-    prevFilters ? getDashboardSummary(prevFilters) : Promise.resolve(null),
+    getDashboardSummary(filters, ctx),
+    prevFilters ? getDashboardSummary(prevFilters, ctx) : Promise.resolve(null),
   ]);
 
   return { summary, previousSummary };
@@ -404,10 +418,11 @@ export type DashboardAllWithComparison = {
 export async function getDashboardAllWithComparison(
   filters: FilterState,
 ): Promise<DashboardAllWithComparison> {
+  const ctx = await getUserContext();
   const prevFilters = computePreviousFilters(filters);
   const [current, previous] = await Promise.all([
-    getDashboardAll(filters),
-    prevFilters ? getDashboardSummary(prevFilters) : Promise.resolve(null),
+    getDashboardAll(filters, ctx),
+    prevFilters ? getDashboardSummary(prevFilters, ctx) : Promise.resolve(null),
   ]);
   return {
     summary: current.summary,
@@ -418,8 +433,11 @@ export async function getDashboardAllWithComparison(
   };
 }
 
-export async function getTicketsOverTime(filters: FilterState): Promise<TicketsOverTimeRow[]> {
-  const ctx = await getUserContext();
+export async function getTicketsOverTime(
+  filters: FilterState,
+  ctx?: UserContext,
+): Promise<TicketsOverTimeRow[]> {
+  const resolvedCtx = ctx ?? (await getUserContext());
   const p = toRLSParams(filters);
 
   const rows = await adminDb.execute<{
@@ -428,10 +446,10 @@ export async function getTicketsOverTime(filters: FilterState): Promise<TicketsO
     resolved: number;
   }>(sql`
     SELECT * FROM get_tickets_over_time_rls(
-      ${ctx.userId},
-      ${ctx.role},
-      ${ctx.clientId ? String(ctx.clientId) : ''},
-      ${ctx.teamMemberId ? String(ctx.teamMemberId) : ''},
+      ${resolvedCtx.userId},
+      ${resolvedCtx.role},
+      ${resolvedCtx.clientId ? String(resolvedCtx.clientId) : ''},
+      ${resolvedCtx.teamMemberId ? String(resolvedCtx.teamMemberId) : ''},
       ${p.dateFrom}::timestamptz,
       ${p.dateTo}::timestamptz,
       ${p.assignedInclude}::int[],

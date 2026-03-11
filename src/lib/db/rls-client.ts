@@ -1,12 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { adminDb } from './index';
 
-type UserContext = {
-  userId: string;
-  role: 'team_member' | 'client';
-  clientId: number | null;
-  teamMemberId: number | null;
-};
+import type { UserContext } from '@/lib/auth/get-user-context';
 
 export async function withRLS<T>(
   ctx: UserContext,
