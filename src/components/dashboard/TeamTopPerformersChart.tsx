@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ChartTabs } from '@/components/charts/ChartTabs';
@@ -32,18 +31,14 @@ const METRIC_TITLES: Record<LeaderboardMetric, string> = {
   fastest: 'Top performers by fastest resolution',
 };
 
-export function TeamTopPerformersChart() {
+export function TeamTopPerformersChart({
+  data = [],
+  isLoading = false,
+}: {
+  data?: TeamPerformanceRow[];
+  isLoading?: boolean;
+}) {
   const [metric, setMetric] = useState<LeaderboardMetric>('rating');
-
-  const { data = [], isLoading } = useQuery({
-    queryKey: ['team', 'performance'],
-    queryFn: async () => {
-      const res = await fetch('/api/team/performance');
-      if (!res.ok) throw new Error(`Request failed: ${res.status}`);
-      return res.json() as Promise<TeamPerformanceRow[]>;
-    },
-    staleTime: 30_000,
-  });
 
   const leaderboard = useMemo(() => {
     if (metric === 'rating') return getTopByRating(data, 5);
