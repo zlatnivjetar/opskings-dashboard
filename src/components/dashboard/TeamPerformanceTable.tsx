@@ -195,7 +195,7 @@ export function TeamPerformanceTable({
         accessorKey: 'username',
         header: 'Name',
         filterFn: 'includesString',
-        cell: ({ row }) => <span>{formatUsername(row.original.username)}</span>,
+        cell: ({ row }) => <span className="font-medium">{formatUsername(row.original.username)}</span>,
       },
       {
         accessorKey: 'department',
