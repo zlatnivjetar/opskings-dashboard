@@ -63,7 +63,7 @@ export function SidebarNav({ role, collapsed = false }: { role: string; collapse
                     collapsed ? 'justify-center py-2 w-full rounded-md' : 'px-3 py-1.5 rounded-r-md',
                     isActive
                       ? 'text-sidebar-accent-foreground'
-                      : 'text-sidebar-foreground hover:text-foreground',
+                      : 'text-muted-foreground hover:text-foreground hover:bg-sidebar-accent',
                   )}
                 >
                   {isActive && (
