@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState } from 'react';
 import { Crown, PanelLeftClose, PanelLeftOpen, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { authClient } from '@/lib/auth/auth-client';
@@ -22,17 +22,6 @@ export function SidebarClient({ name, email, role, initials }: Props) {
     return localStorage.getItem('sidebar-collapsed') === 'true';
   });
   const router = useRouter();
-
-  const prefetchRoutes = useMemo(
-    () => getSidebarRouteHrefs(role).filter((href) => href !== (role === 'team_member' ? '/dashboard' : '/portal')),
-    [role],
-  );
-
-  useEffect(() => {
-    prefetchRoutes.forEach((href) => {
-      router.prefetch(href);
-    });
-  }, [prefetchRoutes, router]);
 
   const toggle = () =>
     setCollapsed((prev) => {
