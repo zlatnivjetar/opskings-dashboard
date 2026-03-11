@@ -12,7 +12,12 @@ import { TicketsByPriorityChart } from '@/components/charts/TicketsByPriorityCha
 import { useFilterState } from '@/hooks/use-filter-state';
 import { formatCompact, formatHours } from '@/lib/format';
 import { serializeFilters } from '@/lib/api/filter-state';
-import type { DashboardSummary, TicketsOverTimeRow, TicketsByTypeRow, TicketsByPriorityRow } from '@/lib/queries/dashboard';
+import type {
+  DashboardDistributions,
+  DashboardSummary,
+  TicketsOverTimeRow,
+  TicketsByTypeRow,
+} from '@/lib/queries/dashboard';
 
 function computeTrend(
   current: number,
@@ -98,16 +103,10 @@ function Inner() {
     staleTime: 30_000,
   });
 
-  const byTypeQuery = useQuery({
-    queryKey: ['dashboard', 'by-type', filters],
-    queryFn: () => getJson<TicketsByTypeRow[]>(`/api/dashboard/by-type?filters=${filterParam}`),
-    staleTime: 30_000,
-  });
-
-  const byPriorityQuery = useQuery({
-    queryKey: ['dashboard', 'by-priority', filters],
+  const distributionsQuery = useQuery({
+    queryKey: ['dashboard', 'distributions', filters],
     queryFn: () =>
-      getJson<TicketsByPriorityRow[]>(`/api/dashboard/by-priority?filters=${filterParam}`),
+      getJson<DashboardDistributions>(`/api/dashboard/distributions?filters=${filterParam}`),
     staleTime: 30_000,
   });
 
@@ -176,8 +175,8 @@ function Inner() {
 
       <ChartsRow
         ticketsOverTime={timeQuery.data}
-        byType={byTypeQuery.data}
-        isLoading={timeQuery.isLoading || byTypeQuery.isLoading}
+        byType={distributionsQuery.data?.byType}
+        isLoading={timeQuery.isLoading || distributionsQuery.isLoading}
       />
 
       <Card>
@@ -185,10 +184,10 @@ function Inner() {
           <CardTitle>Tickets by Priority</CardTitle>
         </CardHeader>
         <CardContent>
-          {byPriorityQuery.isLoading ? (
+          {distributionsQuery.isLoading ? (
             <Skeleton className="h-[200px] w-full" />
           ) : (
-            <TicketsByPriorityChart data={byPriorityQuery.data ?? []} />
+            <TicketsByPriorityChart data={distributionsQuery.data?.byPriority ?? []} />
           )}
         </CardContent>
       </Card>

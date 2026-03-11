@@ -151,6 +151,66 @@ export type TicketsByPriorityRow = {
   resolved: number;
 };
 
+
+export type DashboardDistributions = {
+  byType: TicketsByTypeRow[];
+  byPriority: TicketsByPriorityRow[];
+};
+
+export async function getDashboardDistributions(
+  filters: FilterState,
+): Promise<DashboardDistributions> {
+  const ctx = await getUserContext();
+  const distFilters: FilterState = { date: filters.date, teamMember: filters.teamMember };
+  const whereClause = applyTicketFilters([], distFilters);
+
+  const [byTypeRows, byPriorityRows] = await Promise.all([
+    withRLS(ctx, (tx) =>
+      tx
+        .select({
+          ticketTypeId: ticketTypes.id,
+          typeName: ticketTypes.typeName,
+          count: sql<number>`COUNT(*)::int`,
+        })
+        .from(tickets)
+        .innerJoin(ticketTypes, eq(tickets.ticketTypeId, ticketTypes.id))
+        .where(whereClause)
+        .groupBy(ticketTypes.id, ticketTypes.typeName)
+        .orderBy(desc(sql`COUNT(*)`)),
+    ),
+    withRLS(ctx, (tx) =>
+      tx
+        .select({
+          priority: tickets.priority,
+          open: sql<number>`SUM(CASE WHEN status = 'open' THEN 1 ELSE 0 END)::int`,
+          in_progress: sql<number>`SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END)::int`,
+          resolved: sql<number>`SUM(CASE WHEN status = 'resolved' THEN 1 ELSE 0 END)::int`,
+        })
+        .from(tickets)
+        .where(whereClause)
+        .groupBy(tickets.priority)
+        .orderBy(
+          sql`CASE priority WHEN 'low' THEN 1 WHEN 'medium' THEN 2 WHEN 'high' THEN 3 WHEN 'urgent' THEN 4 ELSE 5 END`,
+        ),
+    ),
+  ]);
+
+  const total = byTypeRows.reduce((s, r) => s + r.count, 0);
+  return {
+    byType: byTypeRows.map((r) => ({
+      ticketTypeId: r.ticketTypeId,
+      typeName: r.typeName,
+      count: r.count,
+      percentage: total > 0 ? Math.round((r.count / total) * 1000) / 10 : 0,
+    })),
+    byPriority: byPriorityRows.map((r) => ({
+      priority: r.priority ?? 'unknown',
+      open: r.open ?? 0,
+      in_progress: r.in_progress ?? 0,
+      resolved: r.resolved ?? 0,
+    })),
+  };
+}
 export async function getTicketsByType(filters: FilterState): Promise<TicketsByTypeRow[]> {
   const ctx = await getUserContext();
   const distFilters: FilterState = { date: filters.date, teamMember: filters.teamMember };
