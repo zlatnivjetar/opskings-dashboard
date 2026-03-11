@@ -45,7 +45,7 @@ A full-stack support analytics dashboard built for the OpsKings development inte
 **Shared Infrastructure**
 - Advanced filter system: date (exact/range/on-or-before/on-or-after), team member, ticket type, priority — each with is/isNot/isAnyOf/isNoneOf operators
 - URL-synced filters (shareable filtered views)
-- Role-based routing enforced at middleware + layout level
+- Role-based routing enforced at middleware level
 - Skeleton loading states on every data-fetching component
 
 ---
@@ -195,7 +195,7 @@ export async function withRLS<T>(ctx: UserContext, fn: (tx) => Promise<T>): Prom
 |--------|-----------|
 | **Horizontal data access** (client A reads client B's data) | RLS policies filter all 7 tables by `get_app_client_id()`. Enforced at the database level — application bugs cannot leak cross-client data. |
 | **Identity spoofing** (client impersonates a team member) | `messages_insert` policy requires `from_team_member_id = get_app_team_member_id()` for team members and `IS NULL` for clients. `clientId`/`teamMemberId` are derived from the server-side session, never from user input. |
-| **Privilege escalation** (client accesses dashboard) | Middleware redirects clients to `/portal`; dashboard layouts call `getUserContext()` and redirect non-team-members. Even if bypassed, RLS limits query results to the client's own data. |
+| **Privilege escalation** (client accesses dashboard) | Middleware redirects clients to `/portal` and team members away from `/portal`. Even if a page route is reached unexpectedly, all user-data queries still require `getUserContext()` + `withRLS()` (or RLS-aware SQL functions), so the database enforces tenant scoping. |
 | **SQL injection** | All queries use Drizzle's `sql` tagged template (parameterized) or Drizzle ORM query builder. No string concatenation in queries. Stored functions use `$1`-style parameters. |
 | **Heavy filter abuse** | Composite indexes cover all filter combinations. Pagination is enforced server-side (`LIMIT`/`OFFSET`). No unbounded result sets. |
 
