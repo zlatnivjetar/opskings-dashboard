@@ -6,6 +6,7 @@ import { submitFeedback } from '@/lib/queries/portal';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Card } from '@/components/ui/card';
 
 export function FeedbackForm({ ticketId }: { ticketId: number }) {
   const router = useRouter();
@@ -30,7 +31,7 @@ export function FeedbackForm({ ticketId }: { ticketId: number }) {
   }
 
   return (
-    <div className="border rounded-lg p-4 space-y-4">
+    <Card className="p-4 space-y-4">
       <h2 className="font-semibold">Leave Feedback</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && <p className="text-sm text-destructive">{error}</p>}
@@ -70,6 +71,6 @@ export function FeedbackForm({ ticketId }: { ticketId: number }) {
           {loading ? 'Submitting…' : 'Submit Feedback'}
         </Button>
       </form>
-    </div>
+    </Card>
   );
 }
