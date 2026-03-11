@@ -24,6 +24,7 @@ interface OverdueTicketsTableProps {
   page: number;
   onPageChange: (page: number) => void;
   isLoading: boolean;
+  isFetching?: boolean;
 }
 
 export function OverdueTicketsTable({
@@ -33,6 +34,7 @@ export function OverdueTicketsTable({
   page,
   onPageChange,
   isLoading,
+  isFetching = false,
 }: OverdueTicketsTableProps) {
   const COLS = 9;
 
@@ -93,17 +95,23 @@ export function OverdueTicketsTable({
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span>{totalCount.toLocaleString()} overdue tickets</span>
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm" onClick={() => onPageChange(page - 1)} disabled={page <= 1}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onPageChange(page - 1)}
+              disabled={page <= 1 || isFetching}
+            >
               Previous
             </Button>
             <span>
               Page {page} of {totalPages}
+              {isFetching ? ' · Loading…' : ''}
             </span>
             <Button
               variant="outline"
               size="sm"
               onClick={() => onPageChange(page + 1)}
-              disabled={page >= totalPages}
+              disabled={page >= totalPages || isFetching}
             >
               Next
             </Button>

@@ -91,6 +91,7 @@ function Inner() {
         `/api/response-time/overdue?filters=${filterParam}&limit=${PAGE_SIZE}&offset=${offset}`,
       ),
     staleTime: 30_000,
+    placeholderData: (previousData) => previousData,
   });
 
   useEffect(() => {
@@ -262,6 +263,7 @@ function Inner() {
             page={page}
             onPageChange={setPage}
             isLoading={overdueQuery.isLoading}
+            isFetching={overdueQuery.isFetching}
           />
         </CardContent>
       </Card>
