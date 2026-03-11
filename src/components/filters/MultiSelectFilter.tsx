@@ -11,8 +11,15 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import type { MultiFilter as MultiFilterType } from '@/types/filters';
+import type { FilterOperator, MultiFilter as MultiFilterType } from '@/types/filters';
 
 export interface SelectOption {
   value: string | number;
@@ -24,7 +31,10 @@ interface MultiSelectFilterProps {
   placeholder: string;
   value: MultiFilterType | undefined;
   options: SelectOption[];
+  operator: FilterOperator;
+  operatorOptions: ReadonlyArray<{ value: FilterOperator; label: string }>;
   onChange: (value: MultiFilterType) => void;
+  onOperatorChange: (operator: FilterOperator) => void;
   onClear: () => void;
 }
 
@@ -33,7 +43,10 @@ export function MultiSelectFilter({
   placeholder,
   value,
   options,
+  operator,
+  operatorOptions,
   onChange,
+  onOperatorChange,
   onClear,
 }: MultiSelectFilterProps) {
   const [open, setOpen] = useState(false);
@@ -41,6 +54,7 @@ export function MultiSelectFilter({
   const selectedValues = (value?.values ?? []) as (string | number)[];
   const selectedSet = new Set(selectedValues.map(String));
   const count = selectedValues.length;
+  const isSingleValueOperator = operator === 'is' || operator === 'isNot';
 
   function handleToggle(optValue: string | number) {
     const isSelected = selectedSet.has(String(optValue));
@@ -50,20 +64,35 @@ export function MultiSelectFilter({
 
     if (next.length === 0) {
       onClear();
-    } else {
-      onChange({ operator: 'isAnyOf', values: next as number[] | string[] });
+      return;
     }
+
+    const normalized = isSingleValueOperator ? [next[0]] : next;
+    onChange({ operator, values: normalized as number[] | string[] });
   }
 
   const triggerLabel = count === 0 ? placeholder : `${label} (${count})`;
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="inline-flex items-center gap-1">
+      <Select value={operator} onValueChange={(next) => onOperatorChange(next as FilterOperator)}>
+        <SelectTrigger className="h-8 w-[120px] bg-secondary/50 hover:bg-secondary border text-sm">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent align="start">
+          {operatorOptions.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <button
             className={cn(
-              'h-8 px-3 bg-secondary/50 hover:bg-secondary border rounded-md text-sm flex items-center gap-1.5 transition-colors cursor-pointer',
+              'h-8 px-2.5 bg-secondary/50 hover:bg-secondary border rounded-md text-sm flex items-center gap-1.5 transition-colors cursor-pointer',
               count > 0 ? 'text-foreground' : 'text-muted-foreground',
             )}
           >
@@ -101,6 +130,9 @@ export function MultiSelectFilter({
               </CommandGroup>
             </CommandList>
           </Command>
+          {isSingleValueOperator && count > 0 && (
+            <p className="pt-2 text-xs text-muted-foreground">Single-value operator: only the first selection is used.</p>
+          )}
         </PopoverContent>
       </Popover>
 
