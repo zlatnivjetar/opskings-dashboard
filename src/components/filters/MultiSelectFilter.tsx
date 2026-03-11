@@ -80,15 +80,15 @@ export function MultiSelectFilter({
             <ChevronDown className="h-3.5 w-3.5 opacity-50 shrink-0" />
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-72 p-2" align="start">
-          <div className="mb-2 grid grid-cols-2 gap-1">
+        <PopoverContent className="w-[19rem] p-2" align="start">
+          <div className="mb-2 grid grid-cols-4 gap-1">
             {operatorOptions.map((option) => (
               <button
                 key={option.value}
                 type="button"
                 onClick={() => onOperatorChange(option.value)}
                 className={cn(
-                  'h-8 rounded-md border px-2 text-sm text-left transition-colors',
+                  'h-8 rounded-md border px-1.5 text-[13px] leading-none text-left transition-colors whitespace-nowrap',
                   option.value === operator
                     ? 'bg-primary text-primary-foreground border-primary'
                     : 'bg-background hover:bg-accent',

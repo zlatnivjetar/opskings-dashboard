@@ -34,19 +34,8 @@ function toRTParams(filters: FilterState): RTParams {
   let dateTo: string | null = null;
 
   if (filters.date) {
-    const { operator, value } = filters.date;
-    switch (operator) {
-      case 'exact':
-        dateFrom = new Date(value + 'T00:00:00.000Z').toISOString();
-        dateTo = new Date(value + 'T23:59:59.999Z').toISOString();
-        break;
-      case 'onOrAfter':
-        dateFrom = new Date(value).toISOString();
-        break;
-      case 'onOrBefore':
-        dateTo = new Date(value + 'T23:59:59.999Z').toISOString();
-        break;
-    }
+    dateFrom = new Date(filters.date.from + 'T00:00:00.000Z').toISOString();
+    dateTo = new Date(filters.date.to + 'T23:59:59.999Z').toISOString();
   }
 
   return {

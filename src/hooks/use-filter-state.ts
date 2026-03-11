@@ -3,16 +3,15 @@
 import { useCallback, useMemo } from 'react';
 import { useSearchParams, usePathname } from 'next/navigation';
 import {
-  DATE_FILTER_OPERATORS,
   MULTI_FILTER_OPERATORS,
   type FilterState,
-  type DateFilter,
   type MultiFilter,
 } from '@/types/filters';
 
 // URL param keys
-const DF_OP = 'df_op';
-const DF_V = 'df_v';
+const DF_FROM = 'df_from';
+const DF_TO = 'df_to';
+const DF_V = 'df_v'; // legacy support
 const TM_OP = 'tm_op';
 const TM_V = 'tm_v';
 const TT_OP = 'tt_op';
@@ -20,14 +19,7 @@ const TT_V = 'tt_v';
 const PR_OP = 'pr_op';
 const PR_V = 'pr_v';
 
-const DATE_OPERATOR_VALUES = new Set(DATE_FILTER_OPERATORS.map((option) => option.value));
 const MULTI_OPERATOR_VALUES = new Set(MULTI_FILTER_OPERATORS.map((option) => option.value));
-
-function normalizeDateOperator(operator: string | null): DateFilter['operator'] {
-  return operator && DATE_OPERATOR_VALUES.has(operator as DateFilter['operator'])
-    ? (operator as DateFilter['operator'])
-    : 'exact';
-}
 
 function normalizeMultiOperator(operator: string | null): MultiFilter['operator'] {
   return operator && MULTI_OPERATOR_VALUES.has(operator as MultiFilter['operator'])
@@ -38,13 +30,16 @@ function normalizeMultiOperator(operator: string | null): MultiFilter['operator'
 export function parseFilters(params: URLSearchParams): FilterState {
   const filters: FilterState = {};
 
-  const dateOp = params.get(DF_OP);
-  const dateVal = params.get(DF_V);
-  if (dateVal) {
-    filters.date = {
-      operator: normalizeDateOperator(dateOp),
-      value: dateVal,
-    };
+  const dateFrom = params.get(DF_FROM);
+  const dateTo = params.get(DF_TO);
+
+  if (dateFrom && dateTo) {
+    filters.date = { from: dateFrom, to: dateTo };
+  } else {
+    const legacyDateVal = params.get(DF_V);
+    if (legacyDateVal) {
+      filters.date = { from: legacyDateVal, to: legacyDateVal };
+    }
   }
 
   const tmOp = params.get(TM_OP);
@@ -79,8 +74,8 @@ export function serializeFilters(filters: FilterState): string {
   const params = new URLSearchParams();
 
   if (filters.date) {
-    params.set(DF_OP, normalizeDateOperator(filters.date.operator));
-    params.set(DF_V, filters.date.value);
+    params.set(DF_FROM, filters.date.from);
+    params.set(DF_TO, filters.date.to);
   }
 
   if (filters.teamMember) {
