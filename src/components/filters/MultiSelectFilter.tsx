@@ -81,22 +81,24 @@ export function MultiSelectFilter({
           </button>
         </PopoverTrigger>
         <PopoverContent className="w-[19rem] p-2" align="start">
-          <div className="mb-2 grid grid-cols-4 gap-1">
-            {operatorOptions.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => onOperatorChange(option.value)}
-                className={cn(
-                  'h-8 rounded-md border px-1.5 text-[13px] leading-none text-left transition-colors whitespace-nowrap',
-                  option.value === operator
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-background hover:bg-accent',
-                )}
-              >
-                {option.label}
-              </button>
-            ))}
+          <div className="mb-2 overflow-x-auto pb-1">
+            <div className="inline-flex gap-0.5 bg-muted rounded-md p-0.5 min-w-max">
+              {operatorOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => onOperatorChange(option.value)}
+                  className={cn(
+                    'px-2.5 py-1 text-xs font-medium rounded transition-colors whitespace-nowrap',
+                    option.value === operator
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
           </div>
           <Command>
             <CommandInput placeholder={`Search ${label.toLowerCase()}…`} />
