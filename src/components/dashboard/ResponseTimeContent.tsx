@@ -1,7 +1,7 @@
 'use client';
 
-import { Suspense, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { Suspense, useEffect, useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PriorityBadge } from '@/components/ui/priority-badge';
@@ -60,6 +60,7 @@ function VarianceBadge({ actual, expected }: { actual: number; expected: number 
 function Inner() {
   const { filters } = useFilterState();
   const [page, setPage] = useState(1);
+  const queryClient = useQueryClient();
   const filterParam = useMemo(() => serializeFilters(filters), [filters]);
   const offset = (page - 1) * PAGE_SIZE;
 
@@ -91,6 +92,24 @@ function Inner() {
       ),
     staleTime: 30_000,
   });
+
+  useEffect(() => {
+    if (page !== 1 || !overdueQuery.data || overdueQuery.data.totalPages < 2) {
+      return;
+    }
+
+    const nextPage = 2;
+    const nextOffset = (nextPage - 1) * PAGE_SIZE;
+
+    void queryClient.prefetchQuery({
+      queryKey: ['response-time', 'overdue', filters, nextPage],
+      queryFn: () =>
+        getJson<OverdueTicketsResult>(
+          `/api/response-time/overdue?filters=${filterParam}&limit=${PAGE_SIZE}&offset=${nextOffset}`,
+        ),
+      staleTime: 30_000,
+    });
+  }, [queryClient, page, overdueQuery.data, filters, filterParam]);
 
   const sorted = useMemo(
     () =>

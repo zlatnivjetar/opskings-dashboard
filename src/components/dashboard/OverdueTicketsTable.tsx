@@ -9,7 +9,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { PriorityBadge } from '@/components/ui/priority-badge';
 import type { OverdueTicketRow } from '@/lib/queries/response-time';
 import { formatDate } from '@/lib/format';
@@ -55,16 +54,12 @@ export function OverdueTicketsTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading ? (
-              Array.from({ length: 10 }).map((_, i) => (
-                <TableRow key={i}>
-                  {Array.from({ length: COLS }).map((_, j) => (
-                    <TableCell key={j}>
-                      <Skeleton className="h-4 w-full" />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+            {isLoading && rows.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={COLS} className="text-center py-8 text-muted-foreground">
+                  Loading overdue tickets…
+                </TableCell>
+              </TableRow>
             ) : rows.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={COLS} className="text-center py-8 text-muted-foreground">
