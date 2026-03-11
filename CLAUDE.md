@@ -15,7 +15,7 @@ Two roles: `team_member` (full dashboard) and `client` (portal, own data only).
 - Recharts SVG `fill`/`stroke` does NOT support `oklch()` — use `useChartTheme()` from `src/hooks/use-chart-theme.ts` for all chart colors
 - Recharts tooltip `contentStyle.background` must be a hex literal — CSS variables don't resolve in Recharts' out-of-tree tooltip DOM
 - `PRIORITY_STYLES`, `STATUS_STYLES`, `PLAN_STYLES` in `src/lib/status-styles.ts` are the canonical source for badge colors — never create local maps
-- Each page must use a single combined server action + single `useQuery` — Next.js serializes concurrent server action calls, causing waterfalls
+- Use API route handlers for parallel data fetching in client components; split independent sections into separate `useQuery` calls so GET requests run concurrently
 - `drizzle-kit push` fails on this Supabase instance (CHECK constraint bug) — use `drizzle-kit migrate` with hand-crafted migrations or direct SQL
 - Middleware fetches session via self-fetch to `/api/auth/get-session` — postgres.js cannot run in Edge Runtime, don't import auth server directly in middleware
 - Do NOT pass Lucide icon components as props from server components to client components — they contain methods and can't be serialized
