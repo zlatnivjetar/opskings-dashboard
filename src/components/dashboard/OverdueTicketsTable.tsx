@@ -47,9 +47,9 @@ export function OverdueTicketsTable({
               <TableHead>Ticket ID</TableHead>
               <TableHead>Title</TableHead>
               <TableHead>Client</TableHead>
-              <TableHead>Created</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Priority</TableHead>
+              <TableHead>Created</TableHead>
               <TableHead className="text-right">Actual</TableHead>
               <TableHead className="text-right">Expected</TableHead>
               <TableHead className="text-right">Excess</TableHead>
@@ -76,11 +76,11 @@ export function OverdueTicketsTable({
                     {row.title}
                   </TableCell>
                   <TableCell className="whitespace-nowrap">{row.clientName}</TableCell>
-                  <TableCell className="whitespace-nowrap text-caption">{formatDate(row.createdAt)}</TableCell>
                   <TableCell className="whitespace-nowrap">{row.typeName}</TableCell>
                   <TableCell>
                     <PriorityBadge priority={row.priority} />
                   </TableCell>
+                  <TableCell className="whitespace-nowrap text-caption">{formatDate(row.createdAt)}</TableCell>
                   <TableCell className="text-right text-sm">{fmt(row.actualHours)}</TableCell>
                   <TableCell className="text-right text-sm text-muted-foreground">{fmt(row.expectedHours)}</TableCell>
                   <TableCell className="text-right text-sm font-bold">+{fmt(row.excessHours)}</TableCell>
