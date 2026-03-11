@@ -45,7 +45,11 @@ export function TicketsOverTimeChart({ data }: { data: TicketsOverTimeRow[] }) {
         <ChartTabs value={view} onChange={setView} options={VIEW_OPTIONS} />
       </div>
       <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+        <BarChart
+          data={chartData}
+          margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
+          accessibilityLayer={false}
+        >
           <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} vertical={false} />
           <XAxis
             dataKey="monthLabel"
@@ -59,7 +63,10 @@ export function TicketsOverTimeChart({ data }: { data: TicketsOverTimeRow[] }) {
             axisLine={false}
             width={45}
           />
-          <Tooltip content={makeTooltip(colors)} />
+          <Tooltip
+            content={makeTooltip(colors)}
+            cursor={{ fill: colors.created, fillOpacity: 0.12 }}
+          />
           <Legend wrapperStyle={{ fontSize: 12 }} />
           {(view === 'all' || view === 'created') && (
             <Bar
