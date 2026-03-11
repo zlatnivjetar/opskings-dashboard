@@ -102,7 +102,11 @@ export function ResolutionHistogramChart({ data }: { data: HistogramRow[] }) {
         <ChartTabs value={granularity} onChange={setGranularity} options={GRAN_OPTIONS} />
       </div>
       <ResponsiveContainer width="100%" height={280}>
-        <BarChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+        <BarChart
+          data={chartData}
+          margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
+          accessibilityLayer={false}
+        >
           <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} vertical={false} />
           <XAxis
             dataKey="label"
@@ -116,7 +120,10 @@ export function ResolutionHistogramChart({ data }: { data: HistogramRow[] }) {
             axisLine={false}
             width={45}
           />
-          <Tooltip content={makeTooltip(colors)} />
+          <Tooltip
+            content={makeTooltip(colors)}
+            cursor={{ fill: colors.created, fillOpacity: 0.12 }}
+          />
           <Legend wrapperStyle={{ fontSize: 11 }} />
           <Bar dataKey="low" name="Low" stackId="a" fill={colors.low} />
           <Bar dataKey="medium" name="Medium" stackId="a" fill={colors.medium} />
