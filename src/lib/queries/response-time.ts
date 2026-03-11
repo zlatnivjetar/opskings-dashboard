@@ -104,14 +104,36 @@ export type HistogramRow = {
   urgent: number;
 };
 
-export type ResponseTimeAll = {
-  stats: ResolutionStatRow[];
-  overdue: OverdueTicketsResult;
-  summary: ResolutionSummaryStats;
-  histogram: HistogramRow[];
-};
-
 // ─── Server Actions ───────────────────────────────────────────────────────────
+
+
+export async function getResponseTimeSummary(
+  filters: FilterState,
+): Promise<ResolutionSummaryStats> {
+  const ctx = await getUserContext();
+
+  return withRLS(ctx, async (tx) => {
+    const whereClause = applyTicketFilters(
+      [eq(tickets.status, 'resolved')],
+      { date: filters.date, teamMember: filters.teamMember },
+    );
+    const rows = await tx
+      .select({
+        resolvedCount: sql<number>`COUNT(*)::int`,
+        avgHours: sql<string | null>`AVG(EXTRACT(EPOCH FROM (resolved_at - created_at)) / 3600)`,
+        medianHours: sql<string | null>`PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (resolved_at - created_at)) / 3600)`,
+      })
+      .from(tickets)
+      .where(whereClause);
+
+    const row = rows[0];
+    return {
+      resolvedCount: row?.resolvedCount ?? 0,
+      avgHours: row?.avgHours != null ? Number(row.avgHours) : null,
+      medianHours: row?.medianHours != null ? Number(row.medianHours) : null,
+    };
+  });
+}
 
 export async function getResolutionTimeStats(
   filters: FilterState,
@@ -216,143 +238,88 @@ function emptyHistogram(): HistogramRow[] {
   }));
 }
 
-// Combined action — fires stats + overdue + summary + histogram in parallel.
-// Fetches ALL overdue rows so the client can paginate instantly.
-export async function getResponseTimeAll(
+
+export async function getResolutionTimeHistogram(
   filters: FilterState,
-): Promise<ResponseTimeAll> {
+): Promise<HistogramRow[]> {
   const ctx = await getUserContext();
-  const p = toRTParams(filters);
 
-  const [statsRows, overdueRows, summaryRow, histogramRows] = await Promise.all([
-    adminDb.execute<{
-      priority: string;
-      min_hours: string;
-      max_hours: string;
-      avg_hours: string;
-      median_hours: string;
-      expected_hours: string | null;
-    }>(sql`
-      SELECT * FROM get_resolution_time_stats_rls(
-        ${ctx.userId}, ${ctx.role},
-        ${ctx.clientId ? String(ctx.clientId) : ''},
-        ${ctx.teamMemberId ? String(ctx.teamMemberId) : ''},
-        ${p.dateFrom}::timestamptz, ${p.dateTo}::timestamptz,
-        ${p.assignedInclude}::int[], ${p.assignedExclude}::int[]
-      )
-    `),
-    adminDb.execute<{
-      ticket_id: number;
-      title: string;
-      client_name: string;
-      created_at: string;
-      type_name: string;
-      priority: string;
-      actual_hours: string;
-      expected_hours: string;
-      excess_hours: string;
-      full_count: string;
-    }>(sql`
-      SELECT * FROM get_overdue_tickets_rls(
-        ${ctx.userId}, ${ctx.role},
-        ${ctx.clientId ? String(ctx.clientId) : ''},
-        ${ctx.teamMemberId ? String(ctx.teamMemberId) : ''},
-        ${p.dateFrom}::timestamptz, ${p.dateTo}::timestamptz,
-        ${p.assignedInclude}::int[], ${p.assignedExclude}::int[],
-        ${1}, ${10000}
-      )
-    `),
-    withRLS(ctx, async (tx) => {
-      const whereClause = applyTicketFilters(
-        [eq(tickets.status, 'resolved')],
-        { date: filters.date, teamMember: filters.teamMember },
-      );
-      const rows = await tx
-        .select({
-          resolvedCount: sql<number>`COUNT(*)::int`,
-          avgHours: sql<string | null>`AVG(EXTRACT(EPOCH FROM (resolved_at - created_at)) / 3600)`,
-          medianHours: sql<string | null>`PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (resolved_at - created_at)) / 3600)`,
-        })
-        .from(tickets)
-        .where(whereClause);
-      return rows[0];
-    }),
-    // Histogram: resolution time bins per priority
-    withRLS(ctx, async (tx) => {
-      const whereClause = applyTicketFilters(
-        [eq(tickets.status, 'resolved'), sql`${tickets.resolvedAt} IS NOT NULL`],
-        { date: filters.date, teamMember: filters.teamMember },
-      );
-      const hoursExpr = sql`EXTRACT(EPOCH FROM (${tickets.resolvedAt} - ${tickets.createdAt})) / 3600.0`;
-      const binExpr = sql`CASE
-        WHEN ${hoursExpr} < 0.5 THEN 0
-        WHEN ${hoursExpr} < 1   THEN 1
-        WHEN ${hoursExpr} < 2   THEN 2
-        WHEN ${hoursExpr} < 4   THEN 3
-        WHEN ${hoursExpr} < 6   THEN 4
-        WHEN ${hoursExpr} < 8   THEN 5
-        WHEN ${hoursExpr} < 12  THEN 6
-        WHEN ${hoursExpr} < 16  THEN 7
-        WHEN ${hoursExpr} < 24  THEN 8
-        ELSE 9
-      END`;
+  const histogramRows = await withRLS(ctx, async (tx) => {
+    const whereClause = applyTicketFilters(
+      [eq(tickets.status, 'resolved'), sql`${tickets.resolvedAt} IS NOT NULL`],
+      { date: filters.date, teamMember: filters.teamMember },
+    );
+    const hoursExpr = sql`EXTRACT(EPOCH FROM (${tickets.resolvedAt} - ${tickets.createdAt})) / 3600.0`;
+    const binExpr = sql`CASE
+      WHEN ${hoursExpr} < 0.5 THEN 0
+      WHEN ${hoursExpr} < 1   THEN 1
+      WHEN ${hoursExpr} < 2   THEN 2
+      WHEN ${hoursExpr} < 4   THEN 3
+      WHEN ${hoursExpr} < 6   THEN 4
+      WHEN ${hoursExpr} < 8   THEN 5
+      WHEN ${hoursExpr} < 12  THEN 6
+      WHEN ${hoursExpr} < 16  THEN 7
+      WHEN ${hoursExpr} < 24  THEN 8
+      ELSE 9
+    END`;
 
-      const rows = await tx
-        .select({
-          priority: tickets.priority,
-          binIndex: sql<number>`(${binExpr})::int`,
-          count: sql<number>`COUNT(*)::int`,
-        })
-        .from(tickets)
-        .where(whereClause)
-        .groupBy(tickets.priority, binExpr)
-        .orderBy(binExpr, tickets.priority);
+    return tx
+      .select({
+        priority: tickets.priority,
+        binIndex: sql<number>`(${binExpr})::int`,
+        count: sql<number>`COUNT(*)::int`,
+      })
+      .from(tickets)
+      .where(whereClause)
+      .groupBy(tickets.priority, binExpr)
+      .orderBy(binExpr, tickets.priority);
+  });
 
-      return rows;
-    }),
-  ]);
-
-  const overdueTotalCount = overdueRows.length > 0 ? Number(overdueRows[0].full_count) : 0;
-
-  // Pivot histogram rows into per-bin objects
   const histogram = emptyHistogram();
   for (const row of histogramRows) {
     const bin = histogram[row.binIndex];
     if (bin) {
-      const p = row.priority as 'low' | 'medium' | 'high' | 'urgent';
-      if (p in bin) bin[p] = row.count;
+      const priority = row.priority as 'low' | 'medium' | 'high' | 'urgent';
+      if (priority in bin) bin[priority] = row.count;
     }
   }
 
-  return {
-    stats: statsRows.map((r) => ({
-      priority: r.priority,
-      minHours: Number(r.min_hours),
-      maxHours: Number(r.max_hours),
-      avgHours: Number(r.avg_hours),
-      medianHours: Number(r.median_hours),
-      expectedHours: r.expected_hours != null ? Number(r.expected_hours) : 0,
-    })),
-    overdue: {
-      rows: overdueRows.map((r) => ({
-        ticketId: Number(r.ticket_id),
-        title: r.title,
-        clientName: r.client_name,
-        createdAt: r.created_at,
-        typeName: r.type_name,
-        priority: r.priority,
-        actualHours: Number(r.actual_hours),
-        expectedHours: Number(r.expected_hours),
-        excessHours: Number(r.excess_hours),
-      })),
-      totalCount: overdueTotalCount,
-      totalPages: 1,
-    },
-    summary: {
-      resolvedCount: summaryRow?.resolvedCount ?? 0,
-      avgHours: summaryRow?.avgHours != null ? Number(summaryRow.avgHours) : null,
-      medianHours: summaryRow?.medianHours != null ? Number(summaryRow.medianHours) : null,
-    },
-    histogram,
-  };
+  return histogram;
+}
+
+// Combined action — fires stats + overdue + summary + histogram in parallel.
+// Fetches ALL overdue rows so the client can paginate instantly.
+
+export type ResponseTimeOverview = {
+  summary: ResolutionSummaryStats;
+  histogram: HistogramRow[];
+};
+
+export async function getResponseTimeOverview(
+  filters: FilterState,
+): Promise<ResponseTimeOverview> {
+  const [summary, histogram] = await Promise.all([
+    getResponseTimeSummary(filters),
+    getResolutionTimeHistogram(filters),
+  ]);
+
+  return { summary, histogram };
+}
+
+export async function getResponseTimeAll(
+  filters: FilterState,
+): Promise<{
+  stats: ResolutionStatRow[];
+  overdue: OverdueTicketsResult;
+  summary: ResolutionSummaryStats;
+  histogram: HistogramRow[];
+}> {
+  const [stats, overdue, summary, histogram] = await Promise.all([
+    getResolutionTimeStats(filters),
+    getOverdueTickets(filters, { page: 1, pageSize: 10000 }),
+    getResponseTimeSummary(filters),
+    getResolutionTimeHistogram(filters),
+  ]);
+
+  return { stats, overdue, summary, histogram };
 }

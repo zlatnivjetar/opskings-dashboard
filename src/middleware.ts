@@ -22,9 +22,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Server actions verify auth internally via getUserContext() — skip the
-  // redundant self-fetch session check to avoid adding ~100-200ms overhead.
+  // Server actions and protected API route handlers validate auth internally
+  // via getUserContext(); skip redundant middleware session self-fetch checks.
   if (request.headers.has('Next-Action')) {
+    return NextResponse.next();
+  }
+
+  if (pathname.startsWith('/api/')) {
     return NextResponse.next();
   }
 
