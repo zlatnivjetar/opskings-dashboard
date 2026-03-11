@@ -13,7 +13,6 @@ import {
 // URL param keys
 const DF_OP = 'df_op';
 const DF_V = 'df_v';
-const DF_VT = 'df_vt';
 const TM_OP = 'tm_op';
 const TM_V = 'tm_v';
 const TT_OP = 'tt_op';
@@ -27,7 +26,7 @@ const MULTI_OPERATOR_VALUES = new Set(MULTI_FILTER_OPERATORS.map((option) => opt
 function normalizeDateOperator(operator: string | null): DateFilter['operator'] {
   return operator && DATE_OPERATOR_VALUES.has(operator as DateFilter['operator'])
     ? (operator as DateFilter['operator'])
-    : 'range';
+    : 'exact';
 }
 
 function normalizeMultiOperator(operator: string | null): MultiFilter['operator'] {
@@ -42,13 +41,10 @@ export function parseFilters(params: URLSearchParams): FilterState {
   const dateOp = params.get(DF_OP);
   const dateVal = params.get(DF_V);
   if (dateVal) {
-    const filter: DateFilter = {
+    filters.date = {
       operator: normalizeDateOperator(dateOp),
       value: dateVal,
     };
-    const valTo = params.get(DF_VT);
-    if (valTo) filter.valueTo = valTo;
-    filters.date = filter;
   }
 
   const tmOp = params.get(TM_OP);
@@ -85,7 +81,6 @@ export function serializeFilters(filters: FilterState): string {
   if (filters.date) {
     params.set(DF_OP, normalizeDateOperator(filters.date.operator));
     params.set(DF_V, filters.date.value);
-    if (filters.date.valueTo) params.set(DF_VT, filters.date.valueTo);
   }
 
   if (filters.teamMember) {

@@ -66,15 +66,11 @@ function toRLSParams(filters: FilterState): RLSParams {
   let dateTo: string | null = null;
 
   if (filters.date) {
-    const { operator, value, valueTo } = filters.date;
+    const { operator, value } = filters.date;
     switch (operator) {
       case 'exact':
         dateFrom = new Date(value + 'T00:00:00.000Z').toISOString();
         dateTo = new Date(value + 'T23:59:59.999Z').toISOString();
-        break;
-      case 'range':
-        dateFrom = new Date(value).toISOString();
-        dateTo = new Date((valueTo ?? value) + 'T23:59:59.999Z').toISOString();
         break;
       case 'onOrAfter':
         dateFrom = new Date(value).toISOString();
@@ -374,22 +370,6 @@ export async function getDashboardAll(
 function computePreviousFilters(filters: FilterState): FilterState | null {
   const d = filters.date;
   if (!d) return null;
-
-  if (d.operator === 'range') {
-    const from = new Date(d.value + 'T00:00:00Z');
-    const to = new Date((d.valueTo ?? d.value) + 'T00:00:00Z');
-    const durationMs = to.getTime() - from.getTime() + 86_400_000; // inclusive end
-    const prevFrom = new Date(from.getTime() - durationMs);
-    const prevTo = new Date(to.getTime() - durationMs);
-    return {
-      ...filters,
-      date: {
-        operator: 'range',
-        value: prevFrom.toISOString().split('T')[0],
-        valueTo: prevTo.toISOString().split('T')[0],
-      },
-    };
-  }
 
   if (d.operator === 'exact') {
     const day = new Date(d.value + 'T00:00:00Z');

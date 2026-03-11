@@ -32,84 +32,22 @@ function toDateStr(date: Date): string {
   return format(date, 'yyyy-MM-dd');
 }
 
-function DatePickerButton({
-  open,
-  onOpenChange,
-  selected,
-  placeholder,
-  onSelect,
-  minDate,
-}: {
-  open: boolean;
-  onOpenChange: (next: boolean) => void;
-  selected: Date | undefined;
-  placeholder: string;
-  onSelect: (date: Date | undefined) => void;
-  minDate?: Date;
-}) {
-  return (
-    <Popover open={open} onOpenChange={onOpenChange}>
-      <PopoverTrigger asChild>
-        <button
-          className={cn(
-            'h-8 px-2.5 bg-secondary/50 hover:bg-secondary border rounded-md text-sm flex items-center gap-2 transition-colors cursor-pointer',
-            !selected && 'text-muted-foreground',
-          )}
-        >
-          <CalendarIcon className="h-3.5 w-3.5 shrink-0" />
-          {selected ? format(selected, 'MMM d, yyyy') : placeholder}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-3" align="start">
-        <Calendar
-          mode="single"
-          selected={selected}
-          onSelect={onSelect}
-          disabled={minDate ? (date: Date) => date < minDate : undefined}
-        />
-      </PopoverContent>
-    </Popover>
-  );
-}
-
 export function DateFilter({ value, operatorOptions, onChange, onOperatorChange, onClear }: DateFilterProps) {
-  const [fromOpen, setFromOpen] = useState(false);
-  const [toOpen, setToOpen] = useState(false);
+  const [open, setOpen] = useState(false);
 
-  const operator = value?.operator ?? 'range';
-  const fromDate = value?.value ? parseLocalDate(value.value) : undefined;
-  const toDate = value?.valueTo ? parseLocalDate(value.valueTo) : undefined;
+  const operator = value?.operator ?? 'exact';
+  const selectedDate = value?.value ? parseLocalDate(value.value) : undefined;
 
-  function handleSingleSelect(date: Date | undefined) {
+  function handleSelect(date: Date | undefined) {
     if (!date) return;
     onChange({ operator, value: toDateStr(date) });
-    setFromOpen(false);
+    setOpen(false);
   }
-
-  function handleFromSelect(date: Date | undefined) {
-    if (!date) return;
-    const nextValue = toDateStr(date);
-    const nextTo = toDate && toDate >= date ? toDateStr(toDate) : nextValue;
-    onChange({ operator: 'range', value: nextValue, valueTo: nextTo });
-    setFromOpen(false);
-  }
-
-  function handleToSelect(date: Date | undefined) {
-    if (!date) return;
-    onChange({
-      operator: 'range',
-      value: value?.value ?? toDateStr(date),
-      valueTo: toDateStr(date),
-    });
-    setToOpen(false);
-  }
-
-  const isRange = operator === 'range';
 
   return (
     <div className="inline-flex items-center gap-1">
       <Select value={operator} onValueChange={(next) => onOperatorChange(next as DateOperator)}>
-        <SelectTrigger className="h-8 w-[140px] bg-secondary/50 hover:bg-secondary border text-sm">
+        <SelectTrigger className="h-8 w-[160px] bg-secondary/50 hover:bg-secondary border text-sm">
           <SelectValue />
         </SelectTrigger>
         <SelectContent align="start">
@@ -121,33 +59,22 @@ export function DateFilter({ value, operatorOptions, onChange, onOperatorChange,
         </SelectContent>
       </Select>
 
-      {isRange ? (
-        <>
-          <DatePickerButton
-            open={fromOpen}
-            onOpenChange={setFromOpen}
-            selected={fromDate}
-            placeholder="Start date"
-            onSelect={handleFromSelect}
-          />
-          <DatePickerButton
-            open={toOpen}
-            onOpenChange={setToOpen}
-            selected={toDate}
-            placeholder="End date"
-            onSelect={handleToSelect}
-            minDate={fromDate}
-          />
-        </>
-      ) : (
-        <DatePickerButton
-          open={fromOpen}
-          onOpenChange={setFromOpen}
-          selected={fromDate}
-          placeholder="Select date"
-          onSelect={handleSingleSelect}
-        />
-      )}
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            className={cn(
+              'h-8 px-2.5 bg-secondary/50 hover:bg-secondary border rounded-md text-sm flex items-center gap-2 transition-colors cursor-pointer',
+              !selectedDate && 'text-muted-foreground',
+            )}
+          >
+            <CalendarIcon className="h-3.5 w-3.5 shrink-0" />
+            {selectedDate ? format(selectedDate, 'MMM d, yyyy') : 'Select date'}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-3" align="start">
+          <Calendar mode="single" selected={selectedDate} onSelect={handleSelect} />
+        </PopoverContent>
+      </Popover>
 
       {value && (
         <button
