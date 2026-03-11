@@ -63,7 +63,7 @@ export function MultiSelectFilter({
         <PopoverTrigger asChild>
           <button
             className={cn(
-              'h-9 px-3 bg-secondary/50 hover:bg-secondary border rounded-md text-sm flex items-center gap-1.5 transition-colors cursor-pointer',
+              'h-8 px-3 bg-secondary/50 hover:bg-secondary border rounded-md text-sm flex items-center gap-1.5 transition-colors cursor-pointer',
               count > 0 ? 'text-foreground' : 'text-muted-foreground',
             )}
           >

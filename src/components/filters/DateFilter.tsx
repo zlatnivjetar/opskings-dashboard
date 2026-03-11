@@ -51,7 +51,7 @@ export function DateFilter({ value, onChange, onClear }: DateFilterProps) {
   }
 
   const triggerCls =
-    'h-9 px-3 bg-secondary/50 hover:bg-secondary border rounded-md text-sm flex items-center gap-2 transition-colors cursor-pointer';
+    'h-8 px-3 bg-secondary/50 hover:bg-secondary border rounded-md text-sm flex items-center gap-2 transition-colors cursor-pointer';
 
   return (
     <div className="flex items-center gap-1.5">
