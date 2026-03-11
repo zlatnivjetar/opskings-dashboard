@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import {
   Table,
   TableBody,
@@ -19,24 +18,24 @@ function fmt(hours: number): string {
   return hours >= 1 ? `${hours.toFixed(1)}h` : `${Math.round(hours * 60)}m`;
 }
 
-const PAGE_SIZE = 20;
-
 interface OverdueTicketsTableProps {
   rows: OverdueTicketRow[];
+  totalCount: number;
+  totalPages: number;
+  page: number;
+  onPageChange: (page: number) => void;
   isLoading: boolean;
 }
 
 export function OverdueTicketsTable({
   rows,
+  totalCount,
+  totalPages,
+  page,
+  onPageChange,
   isLoading,
 }: OverdueTicketsTableProps) {
   const COLS = 9;
-  const [page, setPage] = useState(1);
-
-  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
-  // Clamp page if rows shrink (e.g. filter change)
-  const safePage = Math.min(page, totalPages);
-  const pageRows = rows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   return (
     <div className="space-y-3">
@@ -66,18 +65,16 @@ export function OverdueTicketsTable({
                   ))}
                 </TableRow>
               ))
-            ) : pageRows.length === 0 ? (
+            ) : rows.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={COLS} className="text-center py-8 text-muted-foreground">
                   No overdue tickets found
                 </TableCell>
               </TableRow>
             ) : (
-              pageRows.map((row) => (
+              rows.map((row) => (
                 <TableRow key={row.ticketId}>
-                  <TableCell className="text-sm text-muted-foreground">
-                    #{row.ticketId}
-                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">#{row.ticketId}</TableCell>
                   <TableCell className="max-w-[220px] truncate" title={row.title}>
                     {row.title}
                   </TableCell>
@@ -87,15 +84,9 @@ export function OverdueTicketsTable({
                   <TableCell>
                     <PriorityBadge priority={row.priority} />
                   </TableCell>
-                  <TableCell className="text-right text-sm">
-                    {fmt(row.actualHours)}
-                  </TableCell>
-                  <TableCell className="text-right text-sm text-muted-foreground">
-                    {fmt(row.expectedHours)}
-                  </TableCell>
-                  <TableCell className="text-right text-sm font-bold">
-                    +{fmt(row.excessHours)}
-                  </TableCell>
+                  <TableCell className="text-right text-sm">{fmt(row.actualHours)}</TableCell>
+                  <TableCell className="text-right text-sm text-muted-foreground">{fmt(row.expectedHours)}</TableCell>
+                  <TableCell className="text-right text-sm font-bold">+{fmt(row.excessHours)}</TableCell>
                 </TableRow>
               ))
             )}
@@ -105,24 +96,19 @@ export function OverdueTicketsTable({
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>{rows.length.toLocaleString()} overdue tickets</span>
+          <span>{totalCount.toLocaleString()} overdue tickets</span>
           <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => p - 1)}
-              disabled={safePage <= 1}
-            >
+            <Button variant="outline" size="sm" onClick={() => onPageChange(page - 1)} disabled={page <= 1}>
               Previous
             </Button>
             <span>
-              Page {safePage} of {totalPages}
+              Page {page} of {totalPages}
             </span>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setPage((p) => p + 1)}
-              disabled={safePage >= totalPages}
+              onClick={() => onPageChange(page + 1)}
+              disabled={page >= totalPages}
             >
               Next
             </Button>
