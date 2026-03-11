@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Crown, PanelLeftClose, PanelLeftOpen, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { authClient } from '@/lib/auth/auth-client';
-import { SidebarNav } from './SidebarNav';
+import { getSidebarRouteHrefs, SidebarNav } from './SidebarNav';
 import { SignOutButton } from '@/components/portal/SignOutButton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
