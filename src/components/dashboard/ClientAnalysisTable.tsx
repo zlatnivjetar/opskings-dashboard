@@ -18,7 +18,7 @@ import { PlanBadge } from '@/components/ui/plan-badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowUp, ArrowDown, ArrowUpDown, ListFilter } from 'lucide-react';
 import {
-  getClientAnalysis,
+  type ClientAnalysisResult,
   type ClientAnalysisRow,
   type SortableColumn,
 } from '@/lib/queries/clients';
@@ -238,7 +238,11 @@ export function ClientAnalysisTable() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['clients', 'analysis', 'all'],
-    queryFn: () => getClientAnalysis({ pageSize: 1000 }),
+    queryFn: async () => {
+      const res = await fetch('/api/clients/analysis?page=1&pageSize=1000');
+      if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+      return res.json() as Promise<ClientAnalysisResult>;
+    },
     staleTime: 30_000,
   });
 
