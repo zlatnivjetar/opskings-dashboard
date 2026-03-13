@@ -1,5 +1,3 @@
-'use server';
-
 import { revalidateTag } from 'next/cache';
 import type { UserContext } from '@/lib/auth/get-user-context';
 import type { FilterState, MultiFilter } from '@/types/filters';
