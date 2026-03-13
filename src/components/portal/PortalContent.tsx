@@ -1,29 +1,62 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { PriorityBadge } from '@/components/ui/priority-badge';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { FilterBar } from '@/components/filters/FilterBar';
 import { useFilterState } from '@/hooks/use-filter-state';
-import { getMyTickets } from '@/lib/queries/portal';
+import { serializeFilters } from '@/lib/api/filter-state';
+import type { FilterState } from '@/types/filters';
+import type { TicketListResult } from '@/lib/queries/portal';
+
+async function fetchMyTickets(params: {
+  page: number;
+  pageSize: number;
+  filters: FilterState;
+}): Promise<TicketListResult> {
+  const searchParams = new URLSearchParams({
+    page: String(params.page),
+    pageSize: String(params.pageSize),
+    filters: serializeFilters(params.filters),
+  });
+
+  const response = await fetch(`/api/portal/tickets?${searchParams.toString()}`);
+  if (!response.ok) {
+    throw new Error('Failed to load tickets');
+  }
+
+  return response.json() as Promise<TicketListResult>;
+}
 
 function PortalInner() {
   const { filters } = useFilterState();
   const [page, setPage] = useState(1);
   const pageSize = 20;
+  const queryClient = useQueryClient();
 
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ['portal', 'tickets', filters, page],
-    queryFn: () => getMyTickets({ page, pageSize, filters }),
+    queryFn: () => fetchMyTickets({ page, pageSize, filters }),
     placeholderData: (previousData) => previousData,
   });
 
   const rows = data?.rows ?? [];
   const totalPages = data?.totalPages ?? 1;
   const totalCount = data?.totalCount ?? 0;
+
+  useEffect(() => {
+    if (page >= totalPages) return;
+
+    const nextPage = page + 1;
+    void queryClient.prefetchQuery({
+      queryKey: ['portal', 'tickets', filters, nextPage],
+      queryFn: () => fetchMyTickets({ page: nextPage, pageSize, filters }),
+      staleTime: 30_000,
+    });
+  }, [filters, page, pageSize, queryClient, totalPages]);
 
   return (
     <div className="p-6 space-y-4">
