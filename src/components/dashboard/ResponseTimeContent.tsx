@@ -72,13 +72,10 @@ function Inner() {
 
   const responseTimeDetailsQuery = useQuery({
     queryKey: ['response-time', 'details', filters],
-    queryFn: async () => {
-      const [stats, overdueByPriority] = await Promise.all([
-        getJson<ResolutionStatRow[]>(`/api/response-time/stats?filters=${filterParam}`),
-        getJson<OverdueByPriorityRow[]>(`/api/response-time/overdue-by-priority?filters=${filterParam}`),
-      ]);
-      return { stats, overdueByPriority };
-    },
+    queryFn: () =>
+      getJson<{ stats: ResolutionStatRow[]; overdueByPriority: OverdueByPriorityRow[] }>(
+        `/api/response-time/details?filters=${filterParam}`,
+      ),
     staleTime: 30_000,
   });
 
