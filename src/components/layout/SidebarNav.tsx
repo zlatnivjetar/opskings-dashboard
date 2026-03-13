@@ -36,6 +36,16 @@ function shouldPrefetchRoute(href: string) {
 
 type NavItem = { href: string; label: string; icon: LucideIcon };
 type NavCategory = { category: string; items: NavItem[] };
+type NavigatorWithConnection = Navigator & {
+  connection?: {
+    saveData?: boolean;
+    effectiveType?: string;
+  };
+};
+type WindowWithIdleCallback = Window & {
+  requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
+  cancelIdleCallback?: (handle: number) => void;
+};
 
 const TEAM_MEMBER_CATEGORIES: NavCategory[] = [
   {
@@ -138,7 +148,7 @@ export function SidebarNav({ role, collapsed = false }: { role: string; collapse
       return;
     }
 
-    const connection = navigator.connection;
+    const connection = (navigator as NavigatorWithConnection).connection;
     if (connection?.saveData) {
       return;
     }
@@ -152,9 +162,10 @@ export function SidebarNav({ role, collapsed = false }: { role: string; collapse
       warmRouteData('/response-time');
     };
 
-    if ('requestIdleCallback' in window) {
-      const idleId = window.requestIdleCallback(prewarm, { timeout: 1500 });
-      return () => window.cancelIdleCallback(idleId);
+    const windowWithIdleCallback = window as WindowWithIdleCallback;
+    if (windowWithIdleCallback.requestIdleCallback && windowWithIdleCallback.cancelIdleCallback) {
+      const idleId = windowWithIdleCallback.requestIdleCallback(prewarm, { timeout: 1500 });
+      return () => windowWithIdleCallback.cancelIdleCallback?.(idleId);
     }
 
     const timeoutId = window.setTimeout(prewarm, 200);
