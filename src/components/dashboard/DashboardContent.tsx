@@ -13,8 +13,9 @@ import { useFilterState } from '@/hooks/use-filter-state';
 import { formatCompact, formatHours } from '@/lib/format';
 import { serializeFilters } from '@/lib/api/filter-state';
 import type {
-  DashboardDistributions,
   DashboardSummary,
+  TicketsByPriorityRow,
+  TicketsByTypeRow,
   TicketsOverTimeRow
 } from '@/lib/queries/dashboard';
 
@@ -55,10 +56,16 @@ function Inner() {
     staleTime: 30_000,
   });
 
-  const distributionsQuery = useQuery({
-    queryKey: ['dashboard', 'distributions', filters],
+  const byTypeQuery = useQuery({
+    queryKey: ['dashboard', 'by-type', filters],
+    queryFn: () => getJson<TicketsByTypeRow[]>(`/api/dashboard/by-type?filters=${filterParam}`),
+    staleTime: 30_000,
+  });
+
+  const byPriorityQuery = useQuery({
+    queryKey: ['dashboard', 'by-priority', filters],
     queryFn: () =>
-      getJson<DashboardDistributions>(`/api/dashboard/distributions?filters=${filterParam}`),
+      getJson<TicketsByPriorityRow[]>(`/api/dashboard/by-priority?filters=${filterParam}`),
     staleTime: 30_000,
   });
 
@@ -144,10 +151,10 @@ function Inner() {
             <CardTitle>Tickets by Type</CardTitle>
           </CardHeader>
           <CardContent>
-            {distributionsQuery.isLoading ? (
+            {byTypeQuery.isLoading ? (
               <Skeleton className="h-[300px] w-full" />
             ) : (
-              <TicketsByTypeChart data={distributionsQuery.data?.byType ?? []} />
+              <TicketsByTypeChart data={byTypeQuery.data ?? []} />
             )}
           </CardContent>
         </Card>
@@ -158,10 +165,10 @@ function Inner() {
           <CardTitle>Tickets by Priority</CardTitle>
         </CardHeader>
         <CardContent>
-          {distributionsQuery.isLoading ? (
+          {byPriorityQuery.isLoading ? (
             <Skeleton className="h-[200px] w-full" />
           ) : (
-            <TicketsByPriorityChart data={distributionsQuery.data?.byPriority ?? []} />
+            <TicketsByPriorityChart data={byPriorityQuery.data ?? []} />
           )}
         </CardContent>
       </Card>

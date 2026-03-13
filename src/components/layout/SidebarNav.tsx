@@ -11,8 +11,9 @@ import type { LucideIcon } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { getReferenceData } from '@/lib/actions/reference';
 import type {
-  DashboardDistributions,
   DashboardSummary,
+  TicketsByPriorityRow,
+  TicketsByTypeRow,
   TicketsOverTimeRow,
 } from '@/lib/queries/dashboard';
 import type {
@@ -102,8 +103,13 @@ export function SidebarNav({ role, collapsed = false }: { role: string; collapse
           staleTime: 30_000,
         });
         void queryClient.prefetchQuery({
-          queryKey: ['dashboard', 'distributions', emptyFilterKey],
-          queryFn: () => getJson<DashboardDistributions>('/api/dashboard/distributions?filters='),
+          queryKey: ['dashboard', 'by-type', emptyFilterKey],
+          queryFn: () => getJson<TicketsByTypeRow[]>('/api/dashboard/by-type?filters='),
+          staleTime: 30_000,
+        });
+        void queryClient.prefetchQuery({
+          queryKey: ['dashboard', 'by-priority', emptyFilterKey],
+          queryFn: () => getJson<TicketsByPriorityRow[]>('/api/dashboard/by-priority?filters='),
           staleTime: 30_000,
         });
       }
