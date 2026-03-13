@@ -82,12 +82,15 @@ function Inner() {
     staleTime: 30_000,
   });
 
+  const isOverdueQueryEnabled = responseTimeOverviewQuery.isSuccess;
+
   const overdueQuery = useQuery({
     queryKey: ['response-time', 'overdue', filters, page],
     queryFn: () =>
       getJson<OverdueTicketsResult>(
         `/api/response-time/overdue?filters=${filterParam}&limit=${PAGE_SIZE}&offset=${offset}`,
       ),
+    enabled: isOverdueQueryEnabled,
     staleTime: 30_000,
     placeholderData: (previousData) => previousData,
   });
@@ -269,7 +272,7 @@ function Inner() {
             totalPages={overdueQuery.data?.totalPages ?? 1}
             page={page}
             onPageChange={setPage}
-            isLoading={overdueQuery.isLoading}
+            isLoading={!isOverdueQueryEnabled || overdueQuery.isLoading}
             isFetching={overdueQuery.isFetching}
           />
         </CardContent>
