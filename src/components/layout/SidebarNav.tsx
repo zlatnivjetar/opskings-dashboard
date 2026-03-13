@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { LayoutDashboard, Clock, Users, Building2, Ticket, PlusCircle } from 'lucide-react';
 import { LayoutGroup, motion } from 'motion/react';
@@ -129,6 +129,34 @@ export function SidebarNav({ role, collapsed = false }: { role: string; collapse
     },
     [queryClient, router],
   );
+
+  useEffect(() => {
+    if (role !== 'team_member') {
+      return;
+    }
+
+    const connection = navigator.connection;
+    if (connection?.saveData) {
+      return;
+    }
+
+    if (connection?.effectiveType && ['slow-2g', '2g', '3g'].includes(connection.effectiveType)) {
+      return;
+    }
+
+    const prewarm = () => {
+      warmRouteData('/dashboard');
+      warmRouteData('/response-time');
+    };
+
+    if ('requestIdleCallback' in window) {
+      const idleId = window.requestIdleCallback(prewarm, { timeout: 1500 });
+      return () => window.cancelIdleCallback(idleId);
+    }
+
+    const timeoutId = window.setTimeout(prewarm, 200);
+    return () => window.clearTimeout(timeoutId);
+  }, [role, warmRouteData]);
 
   return (
     <LayoutGroup id="sidebar-nav">
