@@ -116,13 +116,10 @@ export function SidebarNav({ role, collapsed = false }: { role: string; collapse
         });
         void queryClient.prefetchQuery({
           queryKey: ['response-time', 'details', emptyFilterKey],
-          queryFn: async () => {
-            const [stats, overdueByPriority] = await Promise.all([
-              getJson<ResolutionStatRow[]>('/api/response-time/stats?filters='),
-              getJson<OverdueByPriorityRow[]>('/api/response-time/overdue-by-priority?filters='),
-            ]);
-            return { stats, overdueByPriority };
-          },
+          queryFn: () =>
+            getJson<{ stats: ResolutionStatRow[]; overdueByPriority: OverdueByPriorityRow[] }>(
+              '/api/response-time/details?filters=',
+            ),
           staleTime: 30_000,
         });
       }
