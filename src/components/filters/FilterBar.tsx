@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useFilterState } from '@/hooks/use-filter-state';
@@ -38,11 +38,13 @@ export function FilterBar({
 }) {
   const { filters, setFilter, removeFilter, clearFilters } = useFilterState();
   const allowedKeys = allowedFilters ?? ALL_FILTER_KEYS;
+  const queryClient = useQueryClient();
 
   const { data: refData } = useQuery({
     queryKey: ['reference', 'all'],
     queryFn: () => getReferenceData(),
-    staleTime: 300_000,
+    initialData: () => queryClient.getQueryData(['reference', 'all']),
+    staleTime: 60 * 60 * 1000,
   });
 
   const tmOptions: SelectOption[] = (refData?.teamMembers ?? []).map((m) => ({
