@@ -34,7 +34,7 @@ function PortalInner() {
       <FilterBar
         allowedFilters={['date', 'ticketType', 'priority']}
         actions={
-          <Link href="/portal/new">
+          <Link href="/portal/new" prefetch={false}>
             <Button size="sm">New Ticket</Button>
           </Link>
         }
@@ -68,7 +68,7 @@ function PortalInner() {
       ) : rows.length === 0 ? (
         <p className="text-muted-foreground py-8 text-center">
           No tickets found.{' '}
-          <Link href="/portal/new" className="underline">
+          <Link href="/portal/new" className="underline" prefetch={false}>
             Create one
           </Link>
           .
@@ -92,6 +92,7 @@ function PortalInner() {
                     <td className="px-4 py-3">
                       <Link
                         href={`/portal/tickets/${row.id}`}
+                        prefetch={false}
                         className="font-medium hover:underline"
                       >
                         {row.title}
