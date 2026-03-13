@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import {
   ResponsiveContainer,
   PieChart,
@@ -76,6 +76,8 @@ function makeLabel(mode: LabelMode, palette: string[]) {
 export function TicketsByTypeChart({ data }: { data: TicketsByTypeRow[] }) {
   const [topN, setTopN] = useState<TopN>('8');
   const [labelMode, setLabelMode] = useState<LabelMode>('pct');
+  const [showLabels, setShowLabels] = useState(false);
+  const hasCompletedInitialAnimation = useRef(false);
   const colors = useChartTheme();
 
   const slicedData = useMemo(() => {
@@ -112,8 +114,16 @@ export function TicketsByTypeChart({ data }: { data: TicketsByTypeRow[] }) {
             nameKey="typeName"
             innerRadius={55}
             outerRadius={105}
+            isAnimationActive
+            animationDuration={1500}
+            onAnimationEnd={() => {
+              if (!hasCompletedInitialAnimation.current) {
+                hasCompletedInitialAnimation.current = true;
+                setShowLabels(true);
+              }
+            }}
             labelLine={false}
-            label={makeLabel(labelMode, palette)}
+            label={showLabels ? makeLabel(labelMode, palette) : false}
           >
             {slicedData.map((_, i) => (
               <Cell key={i} fill={palette[i]} stroke={colors.tooltipBorder} strokeWidth={1} />
