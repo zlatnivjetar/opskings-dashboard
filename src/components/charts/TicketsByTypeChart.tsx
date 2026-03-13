@@ -112,6 +112,7 @@ export function TicketsByTypeChart({ data }: { data: TicketsByTypeRow[] }) {
             nameKey="typeName"
             innerRadius={55}
             outerRadius={105}
+            isAnimationActive={false}
             labelLine={false}
             label={makeLabel(labelMode, palette)}
           >
