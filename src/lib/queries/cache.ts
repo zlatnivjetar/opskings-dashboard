@@ -42,8 +42,8 @@ export function buildQueryCacheKey(ctx: UserContext, filters: FilterState): stri
 }
 
 export function invalidateTicketAggregateCaches(): void {
-  revalidateTag(QUERY_CACHE_TAGS.ticketAggregates);
-  revalidateTag(QUERY_CACHE_TAGS.dashboardDistributions);
-  revalidateTag(QUERY_CACHE_TAGS.responseTimeOverview);
-  revalidateTag(QUERY_CACHE_TAGS.overdueByPriority);
+  revalidateTag(QUERY_CACHE_TAGS.ticketAggregates, 'max');
+  revalidateTag(QUERY_CACHE_TAGS.dashboardDistributions, 'max');
+  revalidateTag(QUERY_CACHE_TAGS.responseTimeOverview, 'max');
+  revalidateTag(QUERY_CACHE_TAGS.overdueByPriority, 'max');
 }
