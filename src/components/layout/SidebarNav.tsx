@@ -21,8 +21,10 @@ import type {
   ResolutionStatRow,
   ResponseTimeOverview,
 } from '@/lib/queries/response-time';
+import type { TeamPerformanceRow } from '@/lib/queries/team';
+import type { ClientAnalysisResult } from '@/lib/queries/clients';
 
-const PREFETCH_ROUTES = new Set(['/dashboard', '/response-time']);
+const PREFETCH_ROUTES = new Set(['/dashboard', '/response-time', '/team', '/clients', '/portal']);
 
 async function getJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
@@ -139,15 +141,28 @@ export function SidebarNav({ role, collapsed = false }: { role: string; collapse
           staleTime: 30_000,
         });
       }
+
+      if (href === '/team') {
+        void queryClient.prefetchQuery({
+          queryKey: ['team', 'performance', emptyFilterKey],
+          queryFn: () => getJson<TeamPerformanceRow[]>('/api/team/performance?filters='),
+          staleTime: 30_000,
+        });
+      }
+
+      if (href === '/clients') {
+        void queryClient.prefetchQuery({
+          queryKey: ['clients', 'analysis', 'all'],
+          queryFn: () => getJson<ClientAnalysisResult>('/api/clients/analysis?page=1&pageSize=1000'),
+          staleTime: 30_000,
+        });
+      }
+
     },
     [queryClient, router],
   );
 
   useEffect(() => {
-    if (role !== 'team_member') {
-      return;
-    }
-
     const connection = (navigator as NavigatorWithConnection).connection;
     if (connection?.saveData) {
       return;
@@ -158,8 +173,15 @@ export function SidebarNav({ role, collapsed = false }: { role: string; collapse
     }
 
     const prewarm = () => {
-      warmRouteData('/dashboard');
-      warmRouteData('/response-time');
+      if (role === 'team_member') {
+        warmRouteData('/dashboard');
+        warmRouteData('/response-time');
+        warmRouteData('/team');
+        warmRouteData('/clients');
+        return;
+      }
+
+      warmRouteData('/portal');
     };
 
     const windowWithIdleCallback = window as WindowWithIdleCallback;
