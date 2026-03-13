@@ -4,6 +4,7 @@ import { sql, eq, desc } from 'drizzle-orm';
 import { adminDb } from '@/lib/db';
 import { withRLS } from '@/lib/db/rls-client';
 import { getUserContext } from '@/lib/auth/get-user-context';
+import { invalidateTicketAggregateCaches } from '@/lib/queries/cache';
 import { applyTicketFilters } from '@/lib/queries/filters';
 import { tickets, ticketTypes } from '@/lib/db/schema';
 import type { FilterState } from '@/types/filters';
@@ -204,7 +205,7 @@ export async function createTicket(data: {
 }): Promise<number> {
   const ctx = await getUserContext();
 
-  return withRLS(ctx, async (tx) => {
+  const ticketId = await withRLS(ctx, async (tx) => {
     const inserted = await tx.execute<{ id: number }>(sql`
       INSERT INTO tickets (client_id, ticket_type_id, priority, title, status)
       VALUES (
@@ -226,6 +227,9 @@ export async function createTicket(data: {
 
     return ticketId;
   });
+
+  invalidateTicketAggregateCaches();
+  return ticketId;
 }
 
 export async function submitFeedback(

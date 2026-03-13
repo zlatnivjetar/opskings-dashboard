@@ -1,10 +1,18 @@
 'use server';
 
 import { and, eq, gt, isNotNull, sql } from 'drizzle-orm';
+import { unstable_cache } from 'next/cache';
 import { adminDb } from '@/lib/db';
 import { ticketTypes, tickets } from '@/lib/db/schema';
 import { withRLS } from '@/lib/db/rls-client';
 import { applyTicketFilters } from '@/lib/queries/filters';
+import {
+  QUERY_CACHE_TAGS,
+  QUERY_CACHE_TTL_SECONDS,
+  buildQueryCacheKey,
+  shouldBypassQueryCache,
+  type QueryCacheOptions,
+} from '@/lib/queries/cache';
 import { getUserContext, type UserContext } from '@/lib/auth/get-user-context';
 import type { FilterState, MultiFilter } from '@/types/filters';
 
@@ -223,13 +231,11 @@ export async function getOverdueTickets(
   };
 }
 
-export async function getOverdueByPriority(
+async function getOverdueByPriorityUncached(
   filters: FilterState,
-  ctx?: UserContext,
+  ctx: UserContext,
 ): Promise<OverdueByPriorityRow[]> {
-  const resolvedCtx = ctx ?? (await getUserContext());
-
-  return withRLS(resolvedCtx, async (tx) => {
+  return withRLS(ctx, async (tx) => {
     const whereClause = applyTicketFilters(
       [eq(tickets.status, 'resolved'), isNotNull(tickets.resolvedAt)],
       { date: filters.date, teamMember: filters.teamMember },
@@ -260,6 +266,31 @@ export async function getOverdueByPriority(
       overdueCount: row.overdueCount,
     }));
   });
+}
+
+const getCachedOverdueByPriority = unstable_cache(
+  async (cacheKey: string, filters: FilterState, ctx: UserContext) => {
+    void cacheKey;
+    return getOverdueByPriorityUncached(filters, ctx);
+  },
+  ['overdue-by-priority'],
+  {
+    revalidate: QUERY_CACHE_TTL_SECONDS,
+    tags: [QUERY_CACHE_TAGS.ticketAggregates, QUERY_CACHE_TAGS.overdueByPriority],
+  },
+);
+
+export async function getOverdueByPriority(
+  filters: FilterState,
+  ctx?: UserContext,
+  options?: QueryCacheOptions,
+): Promise<OverdueByPriorityRow[]> {
+  const resolvedCtx = ctx ?? (await getUserContext());
+  if (shouldBypassQueryCache(options)) {
+    return getOverdueByPriorityUncached(filters, resolvedCtx);
+  }
+
+  return getCachedOverdueByPriority(buildQueryCacheKey(resolvedCtx, filters), filters, resolvedCtx);
 }
 
 // ─── Histogram helpers ───────────────────────────────────────────────────────
@@ -325,9 +356,9 @@ export async function getResolutionTimeHistogram(
   return histogram;
 }
 
-export async function getResponseTimeOverview(
+async function getResponseTimeOverviewUncached(
   filters: FilterState,
-  ctx?: UserContext,
+  ctx: UserContext,
 ): Promise<ResponseTimeOverview> {
   const [summary, histogram] = await Promise.all([
     getResponseTimeSummary(filters, ctx),
@@ -335,6 +366,31 @@ export async function getResponseTimeOverview(
   ]);
 
   return { summary, histogram };
+}
+
+const getCachedResponseTimeOverview = unstable_cache(
+  async (cacheKey: string, filters: FilterState, ctx: UserContext) => {
+    void cacheKey;
+    return getResponseTimeOverviewUncached(filters, ctx);
+  },
+  ['response-time-overview'],
+  {
+    revalidate: QUERY_CACHE_TTL_SECONDS,
+    tags: [QUERY_CACHE_TAGS.ticketAggregates, QUERY_CACHE_TAGS.responseTimeOverview],
+  },
+);
+
+export async function getResponseTimeOverview(
+  filters: FilterState,
+  ctx?: UserContext,
+  options?: QueryCacheOptions,
+): Promise<ResponseTimeOverview> {
+  const resolvedCtx = ctx ?? (await getUserContext());
+  if (shouldBypassQueryCache(options)) {
+    return getResponseTimeOverviewUncached(filters, resolvedCtx);
+  }
+
+  return getCachedResponseTimeOverview(buildQueryCacheKey(resolvedCtx, filters), filters, resolvedCtx);
 }
 
 

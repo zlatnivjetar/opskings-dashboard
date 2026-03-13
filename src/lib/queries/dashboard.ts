@@ -1,10 +1,18 @@
 'use server';
 
 import { sql, eq, desc } from 'drizzle-orm';
+import { unstable_cache } from 'next/cache';
 import { adminDb } from '@/lib/db';
 import { tickets, ticketTypes } from '@/lib/db/schema';
 import { withRLS } from '@/lib/db/rls-client';
 import { applyTicketFilters } from '@/lib/queries/filters';
+import {
+  QUERY_CACHE_TAGS,
+  QUERY_CACHE_TTL_SECONDS,
+  buildQueryCacheKey,
+  shouldBypassQueryCache,
+  type QueryCacheOptions,
+} from '@/lib/queries/cache';
 import { getUserContext, type UserContext } from '@/lib/auth/get-user-context';
 import type { FilterState, MultiFilter } from '@/types/filters';
 
@@ -145,16 +153,15 @@ export type DashboardDistributions = {
   byPriority: TicketsByPriorityRow[];
 };
 
-export async function getDashboardDistributions(
+async function getDashboardDistributionsUncached(
   filters: FilterState,
-  ctx?: UserContext,
+  ctx: UserContext,
 ): Promise<DashboardDistributions> {
-  const resolvedCtx = ctx ?? (await getUserContext());
   const distFilters: FilterState = { date: filters.date, teamMember: filters.teamMember };
   const whereClause = applyTicketFilters([], distFilters);
 
   const [byTypeRows, byPriorityRows] = await Promise.all([
-    withRLS(resolvedCtx, (tx) =>
+    withRLS(ctx, (tx) =>
       tx
         .select({
           ticketTypeId: ticketTypes.id,
@@ -167,7 +174,7 @@ export async function getDashboardDistributions(
         .groupBy(ticketTypes.id, ticketTypes.typeName)
         .orderBy(desc(sql`COUNT(*)`)),
     ),
-    withRLS(resolvedCtx, (tx) =>
+    withRLS(ctx, (tx) =>
       tx
         .select({
           priority: tickets.priority,
@@ -199,6 +206,31 @@ export async function getDashboardDistributions(
       resolved: r.resolved ?? 0,
     })),
   };
+}
+
+const getCachedDashboardDistributions = unstable_cache(
+  async (cacheKey: string, filters: FilterState, ctx: UserContext) => {
+    void cacheKey;
+    return getDashboardDistributionsUncached(filters, ctx);
+  },
+  ['dashboard-distributions'],
+  {
+    revalidate: QUERY_CACHE_TTL_SECONDS,
+    tags: [QUERY_CACHE_TAGS.ticketAggregates, QUERY_CACHE_TAGS.dashboardDistributions],
+  },
+);
+
+export async function getDashboardDistributions(
+  filters: FilterState,
+  ctx?: UserContext,
+  options?: QueryCacheOptions,
+): Promise<DashboardDistributions> {
+  const resolvedCtx = ctx ?? (await getUserContext());
+  if (shouldBypassQueryCache(options)) {
+    return getDashboardDistributionsUncached(filters, resolvedCtx);
+  }
+
+  return getCachedDashboardDistributions(buildQueryCacheKey(resolvedCtx, filters), filters, resolvedCtx);
 }
 export async function getTicketsByType(
   filters: FilterState,
@@ -463,4 +495,3 @@ export async function getTicketsOverTime(
 
   return rows.map((r) => ({ month: r.month, created: r.created, resolved: r.resolved }));
 }
-
