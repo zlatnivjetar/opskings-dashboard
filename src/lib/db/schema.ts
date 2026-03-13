@@ -9,7 +9,7 @@ import {
   text,
   index,
 } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 
 // ─── Tables ───────────────────────────────────────────────────────────────────
 
@@ -60,6 +60,19 @@ export const tickets = pgTable(
     index('idx_tickets_priority_status').on(table.priority, table.status),
     index('idx_tickets_client_created').on(table.clientId, table.createdAt),
     index('idx_tickets_created_status').on(table.createdAt, table.status),
+    index('idx_tickets_created_assigned_type').on(table.createdAt, table.assignedTo, table.ticketTypeId),
+    index('idx_tickets_created_assigned_priority_status').on(
+      table.createdAt,
+      table.assignedTo,
+      table.priority,
+      table.status,
+    ),
+    index('idx_tickets_resolved_created_assigned_partial')
+      .on(table.createdAt, table.assignedTo, table.resolvedAt)
+      .where(sql`${table.status} = 'resolved' AND ${table.resolvedAt} IS NOT NULL`),
+    index('idx_tickets_resolved_created_priority_type_partial')
+      .on(table.createdAt, table.priority, table.ticketTypeId, table.resolvedAt)
+      .where(sql`${table.status} = 'resolved' AND ${table.resolvedAt} IS NOT NULL`),
   ],
 );
 

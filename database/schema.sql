@@ -79,6 +79,14 @@ CREATE INDEX idx_tickets_assigned_to ON tickets(assigned_to);
 CREATE INDEX idx_tickets_status ON tickets(status);
 CREATE INDEX idx_tickets_created_at ON tickets(created_at);
 CREATE INDEX idx_tickets_resolved_at ON tickets(resolved_at);
+CREATE INDEX idx_tickets_created_assigned_type ON tickets(created_at, assigned_to, ticket_type_id);
+CREATE INDEX idx_tickets_created_assigned_priority_status ON tickets(created_at, assigned_to, priority, status);
+CREATE INDEX idx_tickets_resolved_created_assigned_partial
+  ON tickets(created_at, assigned_to, resolved_at)
+  WHERE status = 'resolved' AND resolved_at IS NOT NULL;
+CREATE INDEX idx_tickets_resolved_created_priority_type_partial
+  ON tickets(created_at, priority, ticket_type_id, resolved_at)
+  WHERE status = 'resolved' AND resolved_at IS NOT NULL;
 CREATE INDEX idx_ticket_messages_ticket_id ON ticket_messages(ticket_id);
 CREATE INDEX idx_payments_client_id ON payments(client_id);
 CREATE INDEX idx_payments_paid_at ON payments(paid_at);
