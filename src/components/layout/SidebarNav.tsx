@@ -1,15 +1,53 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useCallback, useEffect, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { LayoutDashboard, Clock, Users, Building2, Ticket, PlusCircle } from 'lucide-react';
 import { LayoutGroup, motion } from 'motion/react';
 import { cn } from '@/lib/utils';
 import type { LucideIcon } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { getReferenceData } from '@/lib/actions/reference';
+import type {
+  DashboardSummary,
+  TicketsByPriorityRow,
+  TicketsByTypeRow,
+  TicketsOverTimeRow,
+} from '@/lib/queries/dashboard';
+import type {
+  OverdueByPriorityRow,
+  ResolutionStatRow,
+  ResponseTimeOverview,
+} from '@/lib/queries/response-time';
+import type { TeamPerformanceRow } from '@/lib/queries/team';
+import type { ClientAnalysisResult } from '@/lib/queries/clients';
+
+const PREFETCH_ROUTES = new Set(['/dashboard', '/response-time', '/team', '/clients', '/portal']);
+
+async function getJson<T>(url: string): Promise<T> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+  return res.json() as Promise<T>;
+}
+
+function shouldPrefetchRoute(href: string) {
+  return PREFETCH_ROUTES.has(href);
+}
 
 type NavItem = { href: string; label: string; icon: LucideIcon };
 type NavCategory = { category: string; items: NavItem[] };
+type NavigatorWithConnection = Navigator & {
+  connection?: {
+    saveData?: boolean;
+    effectiveType?: string;
+  };
+};
+type WindowWithIdleCallback = Window & {
+  requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
+  cancelIdleCallback?: (handle: number) => void;
+};
 
 const TEAM_MEMBER_CATEGORIES: NavCategory[] = [
   {
@@ -40,7 +78,121 @@ export function getSidebarRouteHrefs(role: string): string[] {
 
 export function SidebarNav({ role, collapsed = false }: { role: string; collapsed?: boolean }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const warmedRoutesRef = useRef(new Set<string>());
   const categories = role === 'team_member' ? TEAM_MEMBER_CATEGORIES : CLIENT_CATEGORIES;
+
+  const warmRouteData = useCallback(
+    (href: string) => {
+      if (!shouldPrefetchRoute(href) || warmedRoutesRef.current.has(href)) {
+        return;
+      }
+
+      warmedRoutesRef.current.add(href);
+      router.prefetch(href);
+
+      const emptyFilterKey = {};
+
+      void queryClient.prefetchQuery({
+        queryKey: ['reference', 'all'],
+        queryFn: getReferenceData,
+        staleTime: 60 * 60 * 1000,
+      });
+
+      if (href === '/dashboard') {
+        void queryClient.prefetchQuery({
+          queryKey: ['dashboard', 'summary', emptyFilterKey],
+          queryFn: () =>
+            getJson<{ summary: DashboardSummary; previousSummary: DashboardSummary | null }>(
+              '/api/dashboard/summary?filters=',
+            ),
+          staleTime: 30_000,
+        });
+        void queryClient.prefetchQuery({
+          queryKey: ['dashboard', 'tickets-over-time', emptyFilterKey],
+          queryFn: () => getJson<TicketsOverTimeRow[]>('/api/dashboard/tickets-over-time?filters='),
+          staleTime: 30_000,
+        });
+        void queryClient.prefetchQuery({
+          queryKey: ['dashboard', 'by-type', emptyFilterKey],
+          queryFn: () => getJson<TicketsByTypeRow[]>('/api/dashboard/by-type?filters='),
+          staleTime: 30_000,
+        });
+        void queryClient.prefetchQuery({
+          queryKey: ['dashboard', 'by-priority', emptyFilterKey],
+          queryFn: () => getJson<TicketsByPriorityRow[]>('/api/dashboard/by-priority?filters='),
+          staleTime: 30_000,
+        });
+      }
+
+      if (href === '/response-time') {
+        void queryClient.prefetchQuery({
+          queryKey: ['response-time', 'overview', emptyFilterKey],
+          queryFn: () => getJson<ResponseTimeOverview>('/api/response-time/overview?filters='),
+          staleTime: 30_000,
+        });
+        void queryClient.prefetchQuery({
+          queryKey: ['response-time', 'details', emptyFilterKey],
+          queryFn: () =>
+            getJson<{ stats: ResolutionStatRow[]; overdueByPriority: OverdueByPriorityRow[] }>(
+              '/api/response-time/details?filters=',
+            ),
+          staleTime: 30_000,
+        });
+      }
+
+      if (href === '/team') {
+        void queryClient.prefetchQuery({
+          queryKey: ['team', 'performance', emptyFilterKey],
+          queryFn: () => getJson<TeamPerformanceRow[]>('/api/team/performance?filters='),
+          staleTime: 30_000,
+        });
+      }
+
+      if (href === '/clients') {
+        void queryClient.prefetchQuery({
+          queryKey: ['clients', 'analysis', 'all'],
+          queryFn: () => getJson<ClientAnalysisResult>('/api/clients/analysis?page=1&pageSize=1000'),
+          staleTime: 30_000,
+        });
+      }
+
+    },
+    [queryClient, router],
+  );
+
+  useEffect(() => {
+    const connection = (navigator as NavigatorWithConnection).connection;
+    if (connection?.saveData) {
+      return;
+    }
+
+    if (connection?.effectiveType && ['slow-2g', '2g', '3g'].includes(connection.effectiveType)) {
+      return;
+    }
+
+    const prewarm = () => {
+      if (role === 'team_member') {
+        warmRouteData('/dashboard');
+        warmRouteData('/response-time');
+        warmRouteData('/team');
+        warmRouteData('/clients');
+        return;
+      }
+
+      warmRouteData('/portal');
+    };
+
+    const windowWithIdleCallback = window as WindowWithIdleCallback;
+    if (windowWithIdleCallback.requestIdleCallback && windowWithIdleCallback.cancelIdleCallback) {
+      const idleId = windowWithIdleCallback.requestIdleCallback(prewarm, { timeout: 1500 });
+      return () => windowWithIdleCallback.cancelIdleCallback?.(idleId);
+    }
+
+    const timeoutId = window.setTimeout(prewarm, 200);
+    return () => window.clearTimeout(timeoutId);
+  }, [role, warmRouteData]);
 
   return (
     <LayoutGroup id="sidebar-nav">
@@ -57,7 +209,9 @@ export function SidebarNav({ role, collapsed = false }: { role: string; collapse
               const link = (
                 <Link
                   href={href}
-                  prefetch={false}
+                  prefetch={shouldPrefetchRoute(href)}
+                  onMouseEnter={() => warmRouteData(href)}
+                  onFocus={() => warmRouteData(href)}
                   className={cn(
                     'relative flex items-center text-sm font-medium transition-colors',
                     collapsed ? 'justify-center py-2 w-full rounded-md' : 'px-3 py-1.5 rounded-r-md',

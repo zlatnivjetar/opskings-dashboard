@@ -13,10 +13,10 @@ import { useFilterState } from '@/hooks/use-filter-state';
 import { formatCompact, formatHours } from '@/lib/format';
 import { serializeFilters } from '@/lib/api/filter-state';
 import type {
-  DashboardDistributions,
   DashboardSummary,
-  TicketsOverTimeRow,
+  TicketsByPriorityRow,
   TicketsByTypeRow,
+  TicketsOverTimeRow
 } from '@/lib/queries/dashboard';
 
 function computeTrend(
@@ -34,53 +34,6 @@ async function getJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Request failed: ${res.status}`);
   return res.json() as Promise<T>;
-}
-
-function ChartsSkeleton() {
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <Card className="lg:col-span-2 p-4">
-        <Skeleton className="h-4 w-32 mb-4" />
-        <Skeleton className="h-[300px] w-full" />
-      </Card>
-      <Card className="lg:col-span-1 p-4">
-        <Skeleton className="h-4 w-32 mb-4" />
-        <Skeleton className="h-[300px] w-full" />
-      </Card>
-    </div>
-  );
-}
-
-function ChartsRow({
-  ticketsOverTime,
-  byType,
-  isLoading,
-}: {
-  ticketsOverTime: TicketsOverTimeRow[] | undefined;
-  byType: TicketsByTypeRow[] | undefined;
-  isLoading: boolean;
-}) {
-  if (isLoading) return <ChartsSkeleton />;
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <Card className="lg:col-span-2">
-        <CardHeader>
-          <CardTitle>Tickets Over Time</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <TicketsOverTimeChart data={ticketsOverTime ?? []} />
-        </CardContent>
-      </Card>
-      <Card className="lg:col-span-1">
-        <CardHeader>
-          <CardTitle>Tickets by Type</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <TicketsByTypeChart data={byType ?? []} />
-        </CardContent>
-      </Card>
-    </div>
-  );
 }
 
 function Inner() {
@@ -103,10 +56,16 @@ function Inner() {
     staleTime: 30_000,
   });
 
-  const distributionsQuery = useQuery({
-    queryKey: ['dashboard', 'distributions', filters],
+  const byTypeQuery = useQuery({
+    queryKey: ['dashboard', 'by-type', filters],
+    queryFn: () => getJson<TicketsByTypeRow[]>(`/api/dashboard/by-type?filters=${filterParam}`),
+    staleTime: 30_000,
+  });
+
+  const byPriorityQuery = useQuery({
+    queryKey: ['dashboard', 'by-priority', filters],
     queryFn: () =>
-      getJson<DashboardDistributions>(`/api/dashboard/distributions?filters=${filterParam}`),
+      getJson<TicketsByPriorityRow[]>(`/api/dashboard/by-priority?filters=${filterParam}`),
     staleTime: 30_000,
   });
 
@@ -173,21 +132,43 @@ function Inner() {
         />
       </div>
 
-      <ChartsRow
-        ticketsOverTime={timeQuery.data}
-        byType={distributionsQuery.data?.byType}
-        isLoading={timeQuery.isLoading || distributionsQuery.isLoading}
-      />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Tickets Over Time</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {timeQuery.isLoading ? (
+              <Skeleton className="h-[300px] w-full" />
+            ) : (
+              <TicketsOverTimeChart data={timeQuery.data ?? []} />
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-1">
+          <CardHeader>
+            <CardTitle>Tickets by Type</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {byTypeQuery.isLoading ? (
+              <Skeleton className="h-[300px] w-full" />
+            ) : (
+              <TicketsByTypeChart data={byTypeQuery.data ?? []} />
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       <Card>
         <CardHeader>
           <CardTitle>Tickets by Priority</CardTitle>
         </CardHeader>
         <CardContent>
-          {distributionsQuery.isLoading ? (
+          {byPriorityQuery.isLoading ? (
             <Skeleton className="h-[200px] w-full" />
           ) : (
-            <TicketsByPriorityChart data={distributionsQuery.data?.byPriority ?? []} />
+            <TicketsByPriorityChart data={byPriorityQuery.data ?? []} />
           )}
         </CardContent>
       </Card>
