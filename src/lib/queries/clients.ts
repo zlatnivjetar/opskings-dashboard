@@ -3,6 +3,8 @@
 import { sql } from 'drizzle-orm';
 import { adminDb } from '@/lib/db';
 import { getUserContext } from '@/lib/auth/get-user-context';
+import { withRLS } from '@/lib/db/rls-client';
+import { clients, payments, tickets } from '@/lib/db/schema';
 
 export type ClientAnalysisRow = {
   id: number;
@@ -21,6 +23,13 @@ export type ClientAnalysisResult = {
   totalPages: number;
 };
 
+export type ClientAnalysisSummary = {
+  totalClients: number;
+  activeClients: number;
+  openTickets: number;
+  totalRevenue: number;
+};
+
 export type SortableColumn =
   | 'clientName'
   | 'planType'
@@ -36,6 +45,46 @@ export type ClientAnalysisParams = {
   sortBy?: SortableColumn;
   sortOrder?: 'asc' | 'desc';
 };
+
+export async function getClientAnalysisSummary(): Promise<ClientAnalysisSummary> {
+  const ctx = await getUserContext();
+
+  return withRLS(ctx, async (tx) => {
+    const [clientRows, openTicketRows, revenueRows] = await Promise.all([
+      tx
+        .select({
+          totalClients: sql<number>`COUNT(*)::int`,
+          activeClients: sql<number>`COUNT(*) FILTER (WHERE ${clients.status} = 'active')::int`,
+        })
+        .from(clients),
+      tx
+        .select({
+          openTickets: sql<number>`COUNT(*)::int`,
+        })
+        .from(tickets)
+        .where(sql`${tickets.status} = 'open'`),
+      tx
+        .select({
+          totalRevenue: sql<string | null>`COALESCE(
+            SUM(${payments.amountUsd}) FILTER (WHERE ${payments.status} = 'paid'),
+            0
+          )::text`,
+        })
+        .from(payments),
+    ]);
+
+    const clientRow = clientRows[0];
+    const openTicketRow = openTicketRows[0];
+    const revenueRow = revenueRows[0];
+
+    return {
+      totalClients: clientRow?.totalClients ?? 0,
+      activeClients: clientRow?.activeClients ?? 0,
+      openTickets: openTicketRow?.openTickets ?? 0,
+      totalRevenue: revenueRow?.totalRevenue != null ? Number(revenueRow.totalRevenue) : 0,
+    };
+  });
+}
 
 export async function getClientAnalysis(
   params?: ClientAnalysisParams,

@@ -4,6 +4,14 @@ export function formatCompact(n: number): string {
   return n.toLocaleString();
 }
 
+export function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
 export function formatHours(hours: number): string {
   if (hours < 1) return `${Math.round(hours * 60)}m`;
   return `${hours.toFixed(1)} hrs`;

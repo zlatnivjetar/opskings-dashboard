@@ -245,4 +245,6 @@ export async function submitFeedback(
       VALUES (${ticketId}, ${rating}, ${feedbackText})
     `);
   });
+
+  invalidateTicketAggregateCaches();
 }

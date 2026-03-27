@@ -1,5 +1,4 @@
-'use client';
-
+import type { ReactNode } from 'react';
 import {
   Table,
   TableBody,
@@ -8,7 +7,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
 import { PriorityBadge } from '@/components/ui/priority-badge';
 import type { OverdueTicketRow } from '@/lib/queries/response-time';
 import { formatDate } from '@/lib/format';
@@ -18,25 +16,12 @@ function fmt(hours: number): string {
 }
 
 interface OverdueTicketsTableProps {
+  footer?: ReactNode;
   rows: OverdueTicketRow[];
-  totalCount: number;
-  totalPages: number;
-  page: number;
-  onPageChange: (page: number) => void;
-  isLoading: boolean;
-  isFetching?: boolean;
 }
 
-export function OverdueTicketsTable({
-  rows,
-  totalCount,
-  totalPages,
-  page,
-  onPageChange,
-  isLoading,
-  isFetching = false,
-}: OverdueTicketsTableProps) {
-  const COLS = 9;
+export function OverdueTicketsTable({ footer, rows }: OverdueTicketsTableProps) {
+  const columns = 9;
 
   return (
     <div className="space-y-3">
@@ -56,15 +41,9 @@ export function OverdueTicketsTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading && rows.length === 0 ? (
+            {rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={COLS} className="text-center py-8 text-muted-foreground">
-                  Loading overdue tickets…
-                </TableCell>
-              </TableRow>
-            ) : rows.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={COLS} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={columns} className="py-8 text-center text-muted-foreground">
                   No overdue tickets found
                 </TableCell>
               </TableRow>
@@ -80,9 +59,15 @@ export function OverdueTicketsTable({
                   <TableCell>
                     <PriorityBadge priority={row.priority} />
                   </TableCell>
-                  <TableCell className="whitespace-nowrap text-caption">{formatDate(row.createdAt)}</TableCell>
-                  <TableCell className="text-right text-sm text-muted-foreground">{fmt(row.actualHours)}</TableCell>
-                  <TableCell className="text-right text-sm text-muted-foreground">{fmt(row.expectedHours)}</TableCell>
+                  <TableCell className="whitespace-nowrap text-caption">
+                    {formatDate(row.createdAt)}
+                  </TableCell>
+                  <TableCell className="text-right text-sm text-muted-foreground">
+                    {fmt(row.actualHours)}
+                  </TableCell>
+                  <TableCell className="text-right text-sm text-muted-foreground">
+                    {fmt(row.expectedHours)}
+                  </TableCell>
                   <TableCell className="text-right text-sm font-bold">+{fmt(row.excessHours)}</TableCell>
                 </TableRow>
               ))
@@ -91,33 +76,7 @@ export function OverdueTicketsTable({
         </Table>
       </div>
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>{totalCount.toLocaleString()} overdue tickets</span>
-          <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onPageChange(page - 1)}
-              disabled={page <= 1 || isFetching}
-            >
-              Previous
-            </Button>
-            <span>
-              Page {page} of {totalPages}
-              {isFetching ? ' · Loading…' : ''}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onPageChange(page + 1)}
-              disabled={page >= totalPages || isFetching}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
+      {footer}
     </div>
   );
 }

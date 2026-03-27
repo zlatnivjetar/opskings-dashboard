@@ -4,7 +4,7 @@ import React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useFilterState } from '@/hooks/use-filter-state';
+import { useFilterState, type FilterNavigationMode } from '@/hooks/use-filter-state';
 import { DateFilter } from './DateFilter';
 import { MultiSelectFilter, type SelectOption } from './MultiSelectFilter';
 import { getReferenceData } from '@/lib/actions/reference';
@@ -32,11 +32,18 @@ function migrateMultiFilter(
 export function FilterBar({
   allowedFilters,
   actions,
+  clearKeysOnChange,
+  navigationMode,
 }: {
   allowedFilters?: FilterKey[];
   actions?: React.ReactNode;
+  clearKeysOnChange?: string[];
+  navigationMode?: FilterNavigationMode;
 }) {
-  const { filters, setFilter, removeFilter, clearFilters } = useFilterState();
+  const { filters, setFilter, removeFilter, clearFilters } = useFilterState({
+    clearKeys: clearKeysOnChange,
+    navigationMode,
+  });
   const allowedKeys = allowedFilters ?? ALL_FILTER_KEYS;
   const queryClient = useQueryClient();
 

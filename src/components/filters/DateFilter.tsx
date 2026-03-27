@@ -1,13 +1,24 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { format } from 'date-fns';
 import { CalendarIcon, X } from 'lucide-react';
 import type { DateRange } from 'react-day-picker';
-import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import type { DateFilter as DateFilterType } from '@/types/filters';
+
+const LazyDateFilterCalendar = dynamic(() => import('./DateFilterCalendar'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex flex-col gap-3 md:flex-row">
+      <Skeleton className="h-[280px] w-[280px] rounded-lg" />
+      <Skeleton className="hidden h-[280px] w-[280px] rounded-lg md:block" />
+    </div>
+  ),
+});
 
 interface DateFilterProps {
   value: DateFilterType | undefined;
@@ -63,12 +74,7 @@ export function DateFilter({ value, onChange, onClear }: DateFilterProps) {
           </button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-3" align="start">
-          <Calendar
-            mode="range"
-            selected={selectedRange}
-            onSelect={handleSelect}
-            numberOfMonths={2}
-          />
+          <LazyDateFilterCalendar selected={selectedRange} onSelect={handleSelect} />
         </PopoverContent>
       </Popover>
 

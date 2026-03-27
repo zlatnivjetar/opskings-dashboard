@@ -11,9 +11,8 @@ import type { LucideIcon } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { getReferenceData } from '@/lib/actions/reference';
 import type {
+  DashboardDistributions,
   DashboardSummary,
-  TicketsByPriorityRow,
-  TicketsByTypeRow,
   TicketsOverTimeRow,
 } from '@/lib/queries/dashboard';
 import type {
@@ -21,8 +20,6 @@ import type {
   ResolutionStatRow,
   ResponseTimeOverview,
 } from '@/lib/queries/response-time';
-import type { TeamPerformanceRow } from '@/lib/queries/team';
-import type { ClientAnalysisResult } from '@/lib/queries/clients';
 
 const PREFETCH_ROUTES = new Set(['/dashboard', '/response-time', '/team', '/clients', '/portal']);
 
@@ -115,13 +112,8 @@ export function SidebarNav({ role, collapsed = false }: { role: string; collapse
           staleTime: 30_000,
         });
         void queryClient.prefetchQuery({
-          queryKey: ['dashboard', 'by-type', emptyFilterKey],
-          queryFn: () => getJson<TicketsByTypeRow[]>('/api/dashboard/by-type?filters='),
-          staleTime: 30_000,
-        });
-        void queryClient.prefetchQuery({
-          queryKey: ['dashboard', 'by-priority', emptyFilterKey],
-          queryFn: () => getJson<TicketsByPriorityRow[]>('/api/dashboard/by-priority?filters='),
+          queryKey: ['dashboard', 'distributions', emptyFilterKey],
+          queryFn: () => getJson<DashboardDistributions>('/api/dashboard/distributions?filters='),
           staleTime: 30_000,
         });
       }
@@ -138,22 +130,6 @@ export function SidebarNav({ role, collapsed = false }: { role: string; collapse
             getJson<{ stats: ResolutionStatRow[]; overdueByPriority: OverdueByPriorityRow[] }>(
               '/api/response-time/details?filters=',
             ),
-          staleTime: 30_000,
-        });
-      }
-
-      if (href === '/team') {
-        void queryClient.prefetchQuery({
-          queryKey: ['team', 'performance', emptyFilterKey],
-          queryFn: () => getJson<TeamPerformanceRow[]>('/api/team/performance?filters='),
-          staleTime: 30_000,
-        });
-      }
-
-      if (href === '/clients') {
-        void queryClient.prefetchQuery({
-          queryKey: ['clients', 'analysis', 'all'],
-          queryFn: () => getJson<ClientAnalysisResult>('/api/clients/analysis?page=1&pageSize=1000'),
           staleTime: 30_000,
         });
       }

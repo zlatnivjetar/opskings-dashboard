@@ -1,33 +1,50 @@
-import { dehydrate, HydrationBoundary, QueryClient } from '@tanstack/react-query';
-import { ResponseTimeContent } from '@/components/dashboard/ResponseTimeContent';
-import { getOverdueByPriority, getResolutionTimeStats, getResponseTimeOverview } from '@/lib/queries/response-time';
+import { Suspense } from 'react';
+import { PageHeader } from '@/components/dashboard/PageHeader';
+import { ResponseTimeDetailsSectionServer } from '@/components/dashboard/ResponseTimeDetailsSectionServer';
+import { ResponseTimeOverdueSectionServer } from '@/components/dashboard/ResponseTimeOverdueSectionServer';
+import { ResponseTimeOverviewSectionServer } from '@/components/dashboard/ResponseTimeOverviewSectionServer';
+import {
+  ResponseTimeDetailsSkeleton,
+  SummaryCardsSkeleton,
+  TableCardSkeleton,
+} from '@/components/skeletons/analytics';
+import {
+  parsePageParam,
+  RESPONSE_TIME_OVERDUE_PAGE_PARAM,
+} from '@/lib/dashboard-route-state';
+import { getFiltersFromPageSearchParams, type PageSearchParams } from '@/lib/filter-url-state';
 
-export default async function ResponseTimePage() {
-  const queryClient = new QueryClient();
-  const emptyFilters = {};
+const RESPONSE_TIME_FILTERS = ['date', 'teamMember'] as const;
 
-  await Promise.all([
-    queryClient.prefetchQuery({
-      queryKey: ['response-time', 'overview', emptyFilters],
-      queryFn: () => getResponseTimeOverview(emptyFilters),
-      staleTime: 30_000,
-    }),
-    queryClient.prefetchQuery({
-      queryKey: ['response-time', 'details', emptyFilters],
-      queryFn: async () => {
-        const [stats, overdueByPriority] = await Promise.all([
-          getResolutionTimeStats(emptyFilters),
-          getOverdueByPriority(emptyFilters),
-        ]);
-        return { stats, overdueByPriority };
-      },
-      staleTime: 30_000,
-    }),
-  ]);
+export default async function ResponseTimePage({
+  searchParams,
+}: {
+  searchParams?: Promise<PageSearchParams>;
+}) {
+  const resolvedSearchParams = await searchParams;
+  const filters = await getFiltersFromPageSearchParams(resolvedSearchParams);
+  const overduePage = parsePageParam(resolvedSearchParams, RESPONSE_TIME_OVERDUE_PAGE_PARAM, 1);
 
   return (
-    <HydrationBoundary state={dehydrate(queryClient)}>
-      <ResponseTimeContent />
-    </HydrationBoundary>
+    <div className="space-y-6 p-6">
+      <PageHeader
+        title="Response Time Analysis"
+        allowedFilters={[...RESPONSE_TIME_FILTERS]}
+        clearKeysOnChange={[RESPONSE_TIME_OVERDUE_PAGE_PARAM]}
+        navigationMode="route"
+      />
+
+      <Suspense fallback={<SummaryCardsSkeleton />}>
+        <ResponseTimeOverviewSectionServer filters={filters} />
+      </Suspense>
+
+      <Suspense fallback={<ResponseTimeDetailsSkeleton />}>
+        <ResponseTimeDetailsSectionServer filters={filters} />
+      </Suspense>
+
+      <Suspense fallback={<TableCardSkeleton rows={10} titleWidth="12rem" />}>
+        <ResponseTimeOverdueSectionServer filters={filters} page={overduePage} />
+      </Suspense>
+    </div>
   );
 }

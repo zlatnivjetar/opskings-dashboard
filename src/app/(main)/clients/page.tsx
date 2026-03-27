@@ -1,22 +1,32 @@
-import { dehydrate, HydrationBoundary, QueryClient } from '@tanstack/react-query';
-import { ClientAnalysisTable } from '@/components/dashboard/ClientAnalysisTable';
-import { getClientAnalysis } from '@/lib/queries/clients';
+import { Suspense } from 'react';
+import { ClientAnalysisTableSectionServer } from '@/components/dashboard/ClientAnalysisTableSectionServer';
+import { ClientsSummarySectionServer } from '@/components/dashboard/ClientsSummarySectionServer';
+import {
+  CompactSummarySkeleton,
+  TableCardSkeleton,
+} from '@/components/skeletons/analytics';
+import { parseClientTableState } from '@/lib/dashboard-route-state';
+import type { PageSearchParams } from '@/lib/filter-url-state';
 
-export default async function ClientsPage() {
-  const queryClient = new QueryClient();
-
-  await queryClient.prefetchQuery({
-    queryKey: ['clients', 'analysis', 'all'],
-    queryFn: () => getClientAnalysis({ page: 1, pageSize: 1000 }),
-    staleTime: 30_000,
-  });
+export default async function ClientsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<PageSearchParams>;
+}) {
+  const resolvedSearchParams = await searchParams;
+  const tableState = parseClientTableState(resolvedSearchParams);
 
   return (
-    <HydrationBoundary state={dehydrate(queryClient)}>
-      <div className="p-6">
-        <h1 className="text-2xl font-semibold mb-6">Client Analysis</h1>
-        <ClientAnalysisTable />
-      </div>
-    </HydrationBoundary>
+    <div className="space-y-6 p-6">
+      <h1 className="text-page-title">Client Analysis</h1>
+
+      <Suspense fallback={<CompactSummarySkeleton items={4} />}>
+        <ClientsSummarySectionServer />
+      </Suspense>
+
+      <Suspense fallback={<TableCardSkeleton rows={10} titleWidth="10rem" />}>
+        <ClientAnalysisTableSectionServer tableState={tableState} />
+      </Suspense>
+    </div>
   );
 }
