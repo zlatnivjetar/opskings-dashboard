@@ -2,7 +2,7 @@
 
 A full-stack support analytics dashboard built for the OpsKings development interview. Processes ~40,000 tickets across 50 clients and 15 team members with role-based access control, real-time filtering, and optimized query performance.
 
-> **[Live Demo](https://opskings-dashboard.vercel.app/)** · **[Video Walkthrough](https://www.loom.com/share/7873fd2b145b49c2af9ae33534d51841)**
+**[Live Demo](https://opskings-dashboard.vercel.app/)**
 
 <p align="center">
   <img src="docs/screenshots/dashboard.webp" width="48%" alt="Dashboard (light mode)" />
